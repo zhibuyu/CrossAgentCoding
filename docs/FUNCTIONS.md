@@ -272,6 +272,25 @@ Writes workspace-specific prompt files for Codex, TRAE, Claude, Gemini, OpenCode
 
 Returns a short list of cc-switch-inspired features currently implemented in this project.
 
+### `Get-CommandPathSafe`
+
+Resolves an executable path the way `Get-Command` does, but inside a disposable runspace with a timeout (default 1.5s). A stale or unreachable entry in `PATH` (for example a disconnected mapped network drive) can make a normal `Get-Command` stall for tens of seconds; this helper abandons the lookup instead of blocking the UI thread. `Get-CommandAny` and `Get-NodeVersion` use it.
+
+### `Get-PlaceholderToolCards`
+
+Builds the tool-card list from target definitions only, with no command or config scanning, so the GUI grid renders instantly at startup. Real status is filled in by `Update-ToolCardControls` once the window is visible.
+
+## Startup And Responsiveness
+
+The packaged exe starts through `wscript.exe launch.vbs`, which runs the script in a hidden PowerShell window. To avoid a "clicking does nothing" experience:
+
+- The main window is created and shown first; environment and agent scanning is deferred to a one-shot timer started from the form `Shown` event, so the window always appears before any potentially slow scan runs.
+- Executable detection is bounded by `Get-CommandPathSafe`, so a dead `PATH` entry cannot hang the scan.
+- Any terminating error during GUI bootstrap is written to `%TEMP%\CrossAgnetCoding-error.log` and shown in a message box instead of failing silently.
+- `launch.vbs` surfaces a message box if PowerShell itself cannot start (for example a blocked execution policy).
+
+Note: an unreachable UNC path placed first in the system `PATH` can stall the PowerShell/.NET process before any application code runs. That is an environment problem outside the app; remove the dead `PATH` entry to resolve it.
+
 ## Safety Rules
 
 - Config files are backed up before automatic writes.

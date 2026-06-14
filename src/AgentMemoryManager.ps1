@@ -72,6 +72,7 @@ $script:Text = @{
         NotConfigured = "未连接 CrossAgnetCoding"
         UnknownVersion = "可执行，版本未知"
         NotChecked = "未检查"
+        Scanning = "扫描中…"
         InstallOrExecutableMissing = "not installed or not executable"
         ConfigureTool = "配置"
         ReconfigureTool = "重新配置"
@@ -180,6 +181,7 @@ $script:Text = @{
         NotConfigured = "Not Connected to CrossAgnetCoding"
         UnknownVersion = "Executable, version unknown"
         NotChecked = "Not Checked"
+        Scanning = "Scanning…"
         InstallOrExecutableMissing = "not installed or not executable"
         ConfigureTool = "Configure"
         ReconfigureTool = "Reconfigure"
@@ -319,8 +321,12 @@ function Get-NodeVersion {
     }
 
     try {
-        $cmd = Get-Command node.exe -ErrorAction Stop
-        $fileVersion = Get-NodeVersionFromFile -Path $cmd.Source
+        $nodeSource = Get-CommandPathSafe -Name "node.exe"
+        if ([string]::IsNullOrWhiteSpace($nodeSource)) {
+            $script:NodeVersionFailureTime = $now
+            return ""
+        }
+        $fileVersion = Get-NodeVersionFromFile -Path $nodeSource
         if ($fileVersion) {
             $script:NodeVersionCache = $fileVersion
             $script:NodeVersionCacheTime = $now
@@ -331,7 +337,7 @@ function Get-NodeVersion {
             return ""
         }
 
-        $version = & $cmd.Source -v 2>$null
+        $version = & $nodeSource -v 2>$null
         if ($LASTEXITCODE -eq 0 -and $version) {
             $script:NodeVersionCache = [string]$version
             $script:NodeVersionCacheTime = $now
@@ -468,13 +474,45 @@ function Write-JsonObject {
     Set-Content -LiteralPath $Path -Value $json -Encoding UTF8
 }
 
+function Get-CommandPathSafe {
+    param(
+        [string]$Name,
+        [int]$TimeoutMs = 1500
+    )
+
+    # Resolve an executable without hanging on a dead/slow PATH entry (e.g. a
+    # stale mapped network drive). Get-Command scans every PATH directory, which
+    # can stall for tens of seconds on an unreachable UNC path. Run it in a
+    # disposable runspace and abandon it if it exceeds the timeout.
+    $ps = [System.Management.Automation.PowerShell]::Create()
+    try {
+        [void]$ps.AddScript('param($n) $c = Get-Command $n -ErrorAction SilentlyContinue; if ($c) { [string]$c.Source } else { "" }').AddArgument($Name)
+        $async = $ps.BeginInvoke()
+        if ($async.AsyncWaitHandle.WaitOne($TimeoutMs)) {
+            $result = $ps.EndInvoke($async)
+            $ps.Dispose()
+            if ($result -and $result.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace([string]$result[0])) {
+                return [string]$result[0]
+            }
+            return ""
+        }
+
+        # Timed out: stop and abandon the runspace; do not block on Dispose.
+        try { [void]$ps.BeginStop($null, $null) } catch {}
+        return ""
+    } catch {
+        try { $ps.Dispose() } catch {}
+        return ""
+    }
+}
+
 function Get-CommandAny {
     param([string[]]$Names)
 
     foreach ($name in $Names) {
-        $cmd = Get-Command $name -ErrorAction SilentlyContinue
-        if ($null -ne $cmd) {
-            return $cmd
+        $source = Get-CommandPathSafe -Name $name
+        if (-not [string]::IsNullOrWhiteSpace($source)) {
+            return [pscustomobject]@{ Name = $name; Source = $source }
         }
     }
 
@@ -831,6 +869,30 @@ function Get-AgentToolCards {
         })
     }
 
+    return $cards.ToArray()
+}
+
+function Get-PlaceholderToolCards {
+    # Lightweight card list built only from target definitions, with no command
+    # or config scanning. Used to render the tool grid instantly at startup; real
+    # status is filled in by Update-ToolCardControls once the window is visible.
+    $cards = New-Object System.Collections.Generic.List[object]
+    foreach ($target in Get-AgentTargetDefinitions) {
+        [void]$cards.Add([pscustomobject]@{
+            Id = $target.Id
+            Name = $target.Name
+            Platform = "Win"
+            Installed = $false
+            Configured = $false
+            ConfigPath = [string]$target.ConfigPath
+            CurrentVersion = T "Scanning"
+            LatestVersion = T "NotChecked"
+            InstallStatus = T "Scanning"
+            ConfigStatus = T "Scanning"
+            Detail = T "Scanning"
+            ActionText = T "ConfigureTool"
+        })
+    }
     return $cards.ToArray()
 }
 
@@ -1500,6 +1562,22 @@ if ($SelfTest) {
         [void]$errors.Add("Shared prompt missing AgentMemory endpoint")
     }
 
+    # The bounded command lookup must find a real executable and return "" for a
+    # missing one without throwing, so startup scans never hang the UI thread.
+    if ([string]::IsNullOrWhiteSpace((Get-CommandPathSafe -Name "powershell.exe"))) {
+        [void]$errors.Add("Get-CommandPathSafe failed to resolve a known executable")
+    }
+    if ((Get-CommandPathSafe -Name "cac-definitely-missing-cmd-xyz.exe") -ne "") {
+        [void]$errors.Add("Get-CommandPathSafe should return empty for a missing command")
+    }
+
+    # Placeholder cards must cover every target without scanning so the window can
+    # render instantly before status is populated.
+    $placeholderCards = @(Get-PlaceholderToolCards)
+    if ($placeholderCards.Count -ne (@(Get-AgentTargetDefinitions)).Count) {
+        [void]$errors.Add("Placeholder tool cards do not match target definitions")
+    }
+
     # Codex config path must follow CODEX_HOME when it points to an existing
     # directory. The write-test path forces the default location, so this branch
     # is only meaningful outside write-test mode.
@@ -1708,8 +1786,6 @@ function Apply-Language {
         $script:NavButtons[4].Text = T "UsageTab"
         $script:NavButtons[5].Text = T "AboutTab"
     }
-    Update-Status
-    Update-ToolCardControls
 }
 
 function Update-Status {
@@ -2294,6 +2370,11 @@ function Update-ToolCardControls {
     [System.Windows.Forms.Application]::DoEvents()
 }
 
+# GUI mode. The packaged exe launches this script through a hidden window, so a
+# terminating error here would otherwise look like "nothing happens" on click.
+# Wrap the whole GUI bootstrap so any failure is logged and shown to the user.
+try {
+
 $script:Form = New-Object System.Windows.Forms.Form
 $script:Form.Size = New-Object System.Drawing.Size(1180, 900)
 $script:Form.StartPosition = "CenterScreen"
@@ -2441,7 +2522,7 @@ $script:Form.Controls.Add($script:ToolCardsPanel)
 
 $script:AgentLabels = New-Object System.Collections.ArrayList
 $script:ToolCardControls = New-Object System.Collections.ArrayList
-$initialCards = @(Get-AgentToolCards)
+$initialCards = @(Get-PlaceholderToolCards)
 for ($i = 0; $i -lt $initialCards.Count; $i++) {
     $col = $i % 3
     $row = [math]::Floor($i / 3)
@@ -2486,6 +2567,8 @@ $script:LanguageBox.Add_SelectedIndexChanged({
         $script:Language = "zh"
     }
     Apply-Language
+    Update-Status
+    Update-ToolCardControls
     Set-ActionFeedback (T "Ready")
 })
 
@@ -2511,8 +2594,7 @@ $timer.Add_Tick({
 $timer.Start()
 
 Apply-Language
-Update-AgentClientStatus
-Set-ActionFeedback (T "Ready")
+Set-ActionFeedback (T "Scanning")
 if ($UiSmokeTest) {
     Write-Output "UI_SMOKE_OK"
     exit 0
@@ -2521,8 +2603,44 @@ Write-Log (T "InitialLog1")
 Write-Log (T "InitialLog2")
 Write-Log (T "InitialLog3")
 
+# Populate environment and agent status only after the window has actually
+# painted. A synchronous scan inside the Shown handler would block the UI thread
+# before the first paint, so the window would never appear. Instead, start a
+# one-shot timer from Shown; its first tick runs inside the live message loop,
+# after the window is visible, so the window always shows even if the scan is slow.
+$script:InitialScanTimer = New-Object System.Windows.Forms.Timer
+$script:InitialScanTimer.Interval = 120
+$script:InitialScanTimer.Add_Tick({
+    $script:InitialScanTimer.Stop()
+    try {
+        Update-Status
+        Update-AgentClientStatus
+        Set-ActionFeedback (T "Ready")
+    } catch {
+        Set-ActionFeedback ("Scan error: " + $_.Exception.Message)
+    }
+})
+$script:Form.Add_Shown({ $script:InitialScanTimer.Start() })
+
 [void]$script:Form.ShowDialog()
 
+} catch {
+    $logPath = Join-Path ([System.IO.Path]::GetTempPath()) "CrossAgnetCoding-error.log"
+    $detail = "[" + (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + "] CrossAgnetCoding startup failed`r`n" +
+        ($_ | Out-String) + "`r`n" + [string]$_.ScriptStackTrace
+    try { Set-Content -LiteralPath $logPath -Value $detail -Encoding UTF8 } catch {}
+    try {
+        [System.Windows.Forms.MessageBox]::Show(
+            "CrossAgnetCoding 启动失败 / failed to start:`r`n`r`n" + ($_ | Out-String) +
+                "`r`n日志 / Log: $logPath",
+            "CrossAgnetCoding",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
+    } catch {}
+    # The user has already been notified above, so exit 0 to avoid the launcher
+    # showing a second, redundant failure dialog.
+    exit 0
+}
 
 
 

@@ -36,6 +36,17 @@ foreach ($requiredTargetFeature in @(
     }
 }
 
+foreach ($requiredStartupFeature in @(
+    "function Get-CommandPathSafe",
+    "function Get-PlaceholderToolCards",
+    "Add_Shown",
+    "InitialScanTimer"
+)) {
+    if ($source -notmatch [regex]::Escape($requiredStartupFeature)) {
+        throw "Missing non-blocking startup feature: $requiredStartupFeature"
+    }
+}
+
 foreach ($requiredWorkspaceFeature in @(
     "function Get-WorkspaceId",
     "function Get-ProjectGitRemote",
