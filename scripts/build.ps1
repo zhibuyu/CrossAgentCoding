@@ -1,5 +1,5 @@
 param(
-    [string]$OutputExe = "D:\otherWorkspace\code_plugin\CrossAgnet\AgentMemoryManager_new.exe"
+    [string]$OutputExe = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,6 +8,16 @@ $root = Split-Path -Parent $PSScriptRoot
 $src = Join-Path $root "src"
 $stage = Join-Path $root "_manager_stage"
 $sed = Join-Path $root "_manager_build.sed"
+
+if ([string]::IsNullOrWhiteSpace($OutputExe)) {
+    $OutputExe = Join-Path $root "release\CrossAgnetCoding.exe"
+}
+
+# Ensure the output directory exists (e.g. release/)
+$outputDir = Split-Path -Parent $OutputExe
+if (-not (Test-Path -LiteralPath $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+}
 
 if (Test-Path -LiteralPath $stage) {
     Remove-Item -LiteralPath $stage -Recurse -Force
@@ -44,7 +54,7 @@ InstallPrompt=
 DisplayLicense=
 FinishMessage=
 TargetName=$OutputExe
-FriendlyName=AgentMemory Manager
+FriendlyName=CrossAgnetCoding
 AppLaunched=wscript.exe launch.vbs
 PostInstallCmd=<None>
 AdminQuietInstCmd=

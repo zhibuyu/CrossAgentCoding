@@ -1,6 +1,8 @@
-# AgentMemory Manager Function Guide
+# CrossAgnetCoding Function Guide
 
 This document explains the public behavior and important internal functions so the project can be maintained after release.
+
+Version: 0.2.0
 
 ## Main User Workflows
 
@@ -46,11 +48,42 @@ Each client has three concepts:
 - MCP Configured: config file contains an `agentmemory` MCP server pointing at `http://localhost:3111`.
 - CLI Available: command-line tool exists in PATH when applicable.
 
+### cc-switch-inspired Shared Setup
+
+CrossAgnetCoding borrows the practical multi-client setup ideas from `farion1231/cc-switch`:
+
+- one place to scan Coding Agent clients
+- one-click MCP configuration
+- config backups before writes
+- shared prompt/context files
+- copyable CLI snippets
+
+`Sync-SharedAgentFiles` writes shared context files to:
+
+```text
+%USERPROFILE%\.CrossAgnetCoding\shared
+```
+
+Generated files:
+
+- `AGENTS.md`
+- `CLAUDE.md`
+- `OPENCODE.md`
+- `TRAE.md`
+
 ## Important Functions
 
 ### `Get-EnvironmentStatus`
 
 Returns Node.js, AgentMemory, iii-engine, and service status.
+
+### `Get-CrossAgnetCodingHome`
+
+Returns:
+
+```text
+%USERPROFILE%\.CrossAgnetCoding
+```
 
 ### `Get-AgentClientStatuses`
 
@@ -113,6 +146,18 @@ Returns a compact JSON MCP server snippet:
 ### `Get-CliConfigCommands`
 
 Returns copyable commands for client CLIs and manual setup.
+
+### `Get-SharedPromptContent`
+
+Returns the shared context prompt written to all generated agent prompt files.
+
+### `Sync-SharedAgentFiles`
+
+Writes shared prompt files for Codex-style agents, Claude Code, OpenCode, and TRAE SOLO CN.
+
+### `Get-CcSwitchInspiredFeatures`
+
+Returns a short list of cc-switch-inspired features currently implemented in this project.
 
 ## Safety Rules
 
