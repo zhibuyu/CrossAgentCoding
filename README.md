@@ -52,6 +52,7 @@ CrossAgnetCoding 的做法：
 - **安装全部**：检查并安装运行所需的 Node.js、AgentMemory、iii-engine。
 - **启动服务 / 停止服务**（同一个按钮，切换）：启动或停止本地 AgentMemory 服务。服务未运行时显示蓝色"启动服务"，运行中显示红色"停止服务"。状态会自动刷新。
 - **检查状态**：调用 `agentmemory status`，把健康状态、会话/记忆条数、Provider、Embeddings 模式等显示在日志区。
+- **检查更新**：查询 AgentMemory 最新版本（经你的 npm 镜像/registry）。已是最新会提示；发现新版本会询问是否更新，确认后用 `npm install -g @agentmemory/agentmemory@latest` 直接升级，更新后重启服务生效。主界面"AgentMemory - 已安装 vX.Y.Z"会显示当前版本。
 - **打开记忆查看器**：用浏览器打开 `http://localhost:3113`，可视化浏览/管理所有共享记忆（服务需在运行中）。
 - **记忆设置**：配置语义检索方式、LLM 提供方、MCP 工具集（详见下方"记忆设置"一节）。
 - **复制 MCP 配置**：把 AgentMemory 的 MCP JSON 复制到剪贴板，便于手动粘贴到工具里。

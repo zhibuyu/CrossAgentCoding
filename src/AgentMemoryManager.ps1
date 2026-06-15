@@ -69,6 +69,16 @@ $script:Text = @{
         StatusRequested = "正在查询 AgentMemory 状态…"
         StatusServiceDown = "服务未运行，无法查询状态。请先启动服务。"
         MemorySettingsSaved = "记忆设置已保存，重启服务后生效"
+        UpdateChecking = "正在检查 AgentMemory 更新…"
+        UpdateCheckFail = "检查更新失败（可能是网络/镜像问题）"
+        UpdateLatest = "已是最新版本 v{0}"
+        UpdateAvailableTitle = "发现新版本"
+        UpdateAvailableBody = "发现 AgentMemory 新版本 v{0}（当前 v{1}）。`r`n是否现在更新？更新后请重启服务。"
+        Updating = "正在更新 AgentMemory 到 v{0}，请稍候…"
+        UpdateOk = "AgentMemory 已更新到 v{0}，请重启服务生效"
+        UpdateFail = "AgentMemory 更新失败：{0}"
+        AgentMemoryNotInstalled = "AgentMemory 未安装，请先点【安装全部】"
+        StaleCleaned = "已清理 {0} 个残留进程"
         InstallingLocalEmbedding = "正在安装本地向量依赖 (@xenova/transformers)，请稍候…"
         LocalEmbeddingInstalled = "本地向量依赖安装完成，重启服务后即可使用本地语义检索"
         LocalEmbeddingInstallFail = "本地向量依赖安装失败：{0}"
@@ -128,7 +138,7 @@ $script:Text = @{
         Ready = "就绪"
         NodeInstalled = "Node.js - 已安装 {0}"
         NodeMissing = "Node.js - 未安装"
-        AgentMemoryInstalled = "AgentMemory - 已安装"
+        AgentMemoryInstalled = "AgentMemory - 已安装 {0}"
         AgentMemoryMissing = "AgentMemory - 未安装"
         IiiInstalled = "iii-engine - 已安装"
         IiiMissing = "iii-engine - 未安装"
@@ -205,6 +215,16 @@ $script:Text = @{
         StatusRequested = "Querying AgentMemory status…"
         StatusServiceDown = "Service is not running, cannot query status. Start it first."
         MemorySettingsSaved = "Memory settings saved. Restart the service to apply."
+        UpdateChecking = "Checking AgentMemory updates…"
+        UpdateCheckFail = "Update check failed (network/registry issue)"
+        UpdateLatest = "Already up to date (v{0})"
+        UpdateAvailableTitle = "Update Available"
+        UpdateAvailableBody = "AgentMemory v{0} is available (current v{1}).`r`nUpdate now? Restart the service afterwards."
+        Updating = "Updating AgentMemory to v{0}…"
+        UpdateOk = "AgentMemory updated to v{0}. Restart the service to apply."
+        UpdateFail = "AgentMemory update failed: {0}"
+        AgentMemoryNotInstalled = "AgentMemory is not installed. Click Install All first."
+        StaleCleaned = "Cleaned {0} stale process(es)"
         InstallingLocalEmbedding = "Installing local embedding dependency (@xenova/transformers)…"
         LocalEmbeddingInstalled = "Local embedding dependency installed. Restart the service to use local semantic search."
         LocalEmbeddingInstallFail = "Local embedding dependency install failed: {0}"
@@ -264,7 +284,7 @@ $script:Text = @{
         Ready = "Ready"
         NodeInstalled = "Node.js - Installed {0}"
         NodeMissing = "Node.js - Not Installed"
-        AgentMemoryInstalled = "AgentMemory - Installed"
+        AgentMemoryInstalled = "AgentMemory - Installed {0}"
         AgentMemoryMissing = "AgentMemory - Not Installed"
         IiiInstalled = "iii-engine - Installed"
         IiiMissing = "iii-engine - Not Installed"
@@ -568,6 +588,25 @@ function Get-ServiceStartupFailureDetail {
     return ($lines -join "`r`n")
 }
 
+function Get-AgentMemoryPackageJsonPath {
+    return (Join-Path $script:NPM_GLOBAL "node_modules\@agentmemory\agentmemory\package.json")
+}
+
+function Get-AgentMemoryVersion {
+    # Installed AgentMemory version, read straight from its package.json.
+    $pkgJson = Get-AgentMemoryPackageJsonPath
+    if (Test-Path -LiteralPath $pkgJson) {
+        try {
+            $v = (Get-Content -LiteralPath $pkgJson -Raw -Encoding UTF8 | ConvertFrom-Json).version
+            if (-not [string]::IsNullOrWhiteSpace([string]$v)) {
+                return ([string]$v).Trim()
+            }
+        } catch {
+        }
+    }
+    return ""
+}
+
 function Get-EnvironmentStatus {
     Set-ManagerEnv
 
@@ -581,9 +620,39 @@ function Get-EnvironmentStatus {
         NodeVersion = $nodeVersion
         AgentMemory = (Test-Path -LiteralPath $agentMemoryCmd)
         AgentMemoryCmd = $agentMemoryCmd
+        AgentMemoryVersion = (Get-AgentMemoryVersion)
         Iii = ((Test-Path -LiteralPath $iiiInAgentMemory) -or (Test-Path -LiteralPath $iiiInLocal))
         IiiPath = $(if (Test-Path -LiteralPath $iiiInAgentMemory) { $iiiInAgentMemory } else { $iiiInLocal })
         Service = (Test-ServiceRunning)
+    }
+}
+
+function Get-AgentMemoryLatestVersion {
+    # Latest published version via the user's configured npm registry (works with
+    # China mirrors). Returns "" on any failure (offline / blocked).
+    try {
+        Set-ManagerEnv
+        $result = Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments "/d /c npm view @agentmemory/agentmemory version" -Wait -TimeoutSeconds 60
+        if ($result.ExitCode -eq 0) {
+            $v = ([string]$result.Output).Trim()
+            if ($v -match "^\d+\.\d+\.\d+") {
+                return $v
+            }
+        }
+    } catch {
+    }
+    return ""
+}
+
+function Compare-SemVer {
+    # Returns 1 if A > B, -1 if A < B, 0 if equal/unknown.
+    param([string]$A, [string]$B)
+    try {
+        $va = [version]([regex]::Match($A, "\d+\.\d+\.\d+").Value)
+        $vb = [version]([regex]::Match($B, "\d+\.\d+\.\d+").Value)
+        return $va.CompareTo($vb)
+    } catch {
+        return 0
     }
 }
 
@@ -2442,6 +2511,7 @@ function Set-Busy {
     $script:BtnMcp.Enabled = -not $Busy
     $script:BtnViewer.Enabled = -not $Busy
     $script:BtnMemorySettings.Enabled = -not $Busy
+    $script:BtnCheckUpdate.Enabled = -not $Busy
     $script:BtnCheckStatus.Enabled = -not $Busy
     $script:BtnScanAgents.Enabled = -not $Busy
     $script:BtnConfigureAgents.Enabled = -not $Busy
@@ -2468,6 +2538,7 @@ function Apply-Language {
     $script:BtnMcp.Text = T "CopyMcp"
     $script:BtnViewer.Text = T "OpenViewer"
     $script:BtnMemorySettings.Text = T "MemorySettings"
+    $script:BtnCheckUpdate.Text = T "CheckUpdate"
     $script:BtnCheckStatus.Text = T "CheckStatus"
     $script:BtnScanAgents.Text = T "ScanAgents"
     $script:BtnConfigureAgents.Text = T "ConfigureAll"
@@ -2502,7 +2573,8 @@ function Update-Status {
     }
 
     if ($status.AgentMemory) {
-        $script:AgentMemoryLabel.Text = T "AgentMemoryInstalled"
+        $amVersion = if ($status.AgentMemoryVersion) { "v" + $status.AgentMemoryVersion } else { "" }
+        $script:AgentMemoryLabel.Text = (T "AgentMemoryInstalled" @($amVersion)).TrimEnd()
         $script:AgentMemoryLabel.ForeColor = [System.Drawing.Color]::DarkGreen
     } else {
         $script:AgentMemoryLabel.Text = T "AgentMemoryMissing"
@@ -2733,7 +2805,19 @@ function Start-AgentMemory {
         Set-ManagerEnv
         Apply-MemoryEnv
 
-        $portConflicts = @(Get-ServicePortConflicts -Ports @($script:STREAMS_PORT, $script:VIEWER_PORT))
+        # Clear stale AgentMemory/iii processes first. A zombie engine still
+        # holding 3112 / 49134 (after a crash or closing the window without
+        # stopping) is the usual cause of "did not start within 60s". We only
+        # reach here when 3111 has no healthy AgentMemory listener, so killing
+        # leftover AgentMemory/iii processes is safe.
+        $cleaned = Stop-AgentMemoryProcesses
+        if ($cleaned -gt 0) {
+            Write-Log (T "StaleCleaned" @($cleaned))
+            Start-Sleep -Seconds 2
+        }
+
+        # Abort only when a NON-AgentMemory process still holds a required port.
+        $portConflicts = @(Get-ServicePortConflicts -Ports @($script:STREAMS_PORT, $script:VIEWER_PORT) | Where-Object { -not $_.LooksLikeAgentMemory })
         if ($portConflicts.Count -gt 0) {
             Show-ServicePortConflicts -Conflicts $portConflicts
             return
@@ -2805,28 +2889,14 @@ function Stop-AgentMemory {
 
     try {
         Write-Log (T "StopRequested")
-        $pids = @(Get-ServicePids)
-        $stoppedAny = $false
+        $killed = Stop-AgentMemoryProcesses
+        $stoppedAny = ($killed -gt 0)
 
-        foreach ($servicePid in $pids) {
-            try {
-                Stop-Process -Id $servicePid -Force -ErrorAction Stop
-                $stoppedAny = $true
-            } catch {
-                Write-Log $_.Exception.Message
-            }
+        foreach ($dir in @($script:AM_DIR, (Get-ServiceWorkDir))) {
+            Remove-Item -LiteralPath (Join-Path $dir "iii.pid") -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath (Join-Path $dir "engine-state.json") -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath (Join-Path $dir "worker.pid") -Force -ErrorAction SilentlyContinue
         }
-
-        Get-Process -Name "iii" -ErrorAction SilentlyContinue | ForEach-Object {
-            try {
-                Stop-Process -Id $_.Id -Force -ErrorAction Stop
-                $stoppedAny = $true
-            } catch {
-            }
-        }
-
-        Remove-Item -LiteralPath (Join-Path $script:AM_DIR "iii.pid") -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath (Join-Path $script:AM_DIR "engine-state.json") -Force -ErrorAction SilentlyContinue
 
         Start-Sleep -Seconds 1
         Update-Status
@@ -2840,6 +2910,91 @@ function Stop-AgentMemory {
             Write-Log (T "StopNothingBody")
             [System.Windows.Forms.MessageBox]::Show((T "StopNothingBody"), (T "StopNothingTitle"), "OK", "Information") | Out-Null
         }
+    } finally {
+        Set-Busy $false
+    }
+}
+
+function Stop-AgentMemoryProcesses {
+    # Kill stale AgentMemory / iii-engine / worker processes so a clean (re)start
+    # is not blocked by a zombie still holding the engine (49134) or stream ports.
+    # NOTE: uses $procId, never $pid (that is an automatic variable in PowerShell).
+    $targets = New-Object System.Collections.Generic.List[int]
+
+    foreach ($conflict in @(Get-ServicePortConflicts -Ports @($script:PORT, $script:STREAMS_PORT, $script:VIEWER_PORT, 49134))) {
+        if ($conflict.LooksLikeAgentMemory -and [int]$conflict.ProcessId -gt 0) {
+            [void]$targets.Add([int]$conflict.ProcessId)
+        }
+    }
+    foreach ($proc in @(Get-Process -Name "iii" -ErrorAction SilentlyContinue)) {
+        [void]$targets.Add([int]$proc.Id)
+    }
+    foreach ($proc in @(Get-Process -Name "node" -ErrorAction SilentlyContinue)) {
+        $cl = Get-ProcessCommandLineById -ProcessId ([int]$proc.Id)
+        if ($cl -match "agentmemory") {
+            [void]$targets.Add([int]$proc.Id)
+        }
+    }
+
+    $killed = 0
+    foreach ($procId in (@($targets) | Select-Object -Unique)) {
+        try {
+            Stop-Process -Id $procId -Force -ErrorAction Stop
+            $killed++
+        } catch {
+        }
+    }
+    return $killed
+}
+
+function Check-AgentMemoryUpdate {
+    if (-not (Test-Path -LiteralPath (Join-Path $script:NPM_GLOBAL "agentmemory.cmd"))) {
+        Set-ActionFeedback (T "AgentMemoryNotInstalled") ([System.Drawing.Color]::DarkOrange)
+        Write-Log (T "AgentMemoryNotInstalled")
+        return
+    }
+
+    Set-Busy $true
+    Set-ActionFeedback (T "UpdateChecking") ([System.Drawing.Color]::DarkOrange)
+    Write-Log (T "UpdateChecking")
+    try {
+        $current = Get-AgentMemoryVersion
+        $latest = Get-AgentMemoryLatestVersion
+        if ([string]::IsNullOrWhiteSpace($latest)) {
+            Set-ActionFeedback (T "UpdateCheckFail") ([System.Drawing.Color]::Red)
+            Write-Log (T "UpdateCheckFail")
+            return
+        }
+
+        Write-Log ("AgentMemory current=v$current latest=v$latest")
+        if ((Compare-SemVer -A $latest -B $current) -le 0) {
+            Set-ActionFeedback (T "UpdateLatest" @($current)) ([System.Drawing.Color]::DarkGreen)
+            Write-Log (T "UpdateLatest" @($current))
+            return
+        }
+
+        $choice = [System.Windows.Forms.MessageBox]::Show((T "UpdateAvailableBody" @($latest, $current)), (T "UpdateAvailableTitle"), "YesNo", "Question")
+        if ($choice -ne [System.Windows.Forms.DialogResult]::Yes) {
+            return
+        }
+
+        Set-ActionFeedback (T "Updating" @($latest)) ([System.Drawing.Color]::DarkOrange)
+        Write-Log (T "Updating" @($latest))
+        $result = Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments "/d /c npm install -g @agentmemory/agentmemory@latest" -Wait -TimeoutSeconds 900
+        $new = Get-AgentMemoryVersion
+        if ($result.ExitCode -eq 0 -and (Compare-SemVer -A $new -B $current) -gt 0) {
+            Update-Status
+            Set-ActionFeedback (T "UpdateOk" @($new)) ([System.Drawing.Color]::DarkGreen)
+            Write-Log (T "UpdateOk" @($new))
+            [System.Windows.Forms.MessageBox]::Show((T "UpdateOk" @($new)), (T "UpdateAvailableTitle"), "OK", "Information") | Out-Null
+        } else {
+            $detail = if ($result.Error) { $result.Error.Trim() } else { "exit $($result.ExitCode)" }
+            Set-ActionFeedback (T "UpdateFail" @($detail)) ([System.Drawing.Color]::Red)
+            Write-Log (T "UpdateFail" @($detail))
+        }
+    } catch {
+        Set-ActionFeedback (T "UpdateFail" @($_.Exception.Message)) ([System.Drawing.Color]::Red)
+        Write-Log (T "UpdateFail" @($_.Exception.Message))
     } finally {
         Set-Busy $false
     }
@@ -3581,6 +3736,9 @@ $script:AboutPanel.Controls.Add($script:BtnCopyCli)
 $script:BtnMemorySettings = New-FlatButton -Text "" -X 876 -Y 48 -Width 122 -Height 28
 $script:AboutPanel.Controls.Add($script:BtnMemorySettings)
 
+$script:BtnCheckUpdate = New-FlatButton -Text "" -X 1006 -Y 48 -Width 122 -Height 28
+$script:AboutPanel.Controls.Add($script:BtnCheckUpdate)
+
 $script:BtnSyncShared = New-FlatButton -Text "" -X 616 -Y 84 -Width 122 -Height 28
 $script:AboutPanel.Controls.Add($script:BtnSyncShared)
 
@@ -3677,6 +3835,7 @@ $script:BtnStartStop.Add_Click({
 $script:BtnMcp.Add_Click({ Copy-McpConfig })
 $script:BtnViewer.Add_Click({ Open-MemoryViewer })
 $script:BtnMemorySettings.Add_Click({ Show-MemorySettingsDialog })
+$script:BtnCheckUpdate.Add_Click({ Check-AgentMemoryUpdate })
 $script:BtnCheckStatus.Add_Click({ Show-MemoryStatus })
 $script:BtnScanAgents.Add_Click({ Scan-AgentClients })
 $script:BtnConfigureAgents.Add_Click({ Configure-AgentClients })
