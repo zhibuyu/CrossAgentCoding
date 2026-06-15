@@ -53,6 +53,16 @@ $script:Text = @{
         CopyMcp = "复制 MCP 配置"
         OpenViewer = "打开记忆查看器"
         MemorySettings = "记忆设置"
+        StorageSettings = "存储设置"
+        StorageTitle = "存储位置设置"
+        StorageHomeRow = "CrossAgnetCoding 数据目录（工作区、共享 Prompt、设置）"
+        StorageServiceRow = "AgentMemory 数据目录（记忆库 data/ 与服务日志）"
+        StorageModelRow = "模型缓存目录（本地向量模型 all-MiniLM-L6-v2）"
+        StorageChooseMigrate = "选择并迁移…"
+        StorageNote = "迁移会把现有数据复制到新目录并切换指向（旧目录保留）。AgentMemory 相关目录需重启服务后生效。"
+        StoragePickService = "选择 AgentMemory 数据目录"
+        StoragePickModel = "选择模型缓存目录"
+        StorageMigrated = "已迁移到：{0}（重启服务后生效）"
         CheckStatus = "检查状态"
         ViewerNotRunning = "服务未运行，请先启动服务再打开查看器"
         StatusRequested = "正在查询 AgentMemory 状态…"
@@ -112,7 +122,8 @@ $script:Text = @{
         MigrateDataDone = "数据目录已迁移：{0}"
         MigrateDataTitle = "迁移完成"
         Log = "日志"
-        DataPathInfo = "数据目录：{0}      服务日志：{1}"
+        DataPathInfo = "数据目录：{0}      AgentMemory 存储：{1}"
+        ModelCacheLabel = "模型缓存：{0}"
         Ready = "就绪"
         NodeInstalled = "Node.js - 已安装 {0}"
         NodeMissing = "Node.js - 未安装"
@@ -178,6 +189,16 @@ $script:Text = @{
         CopyMcp = "Copy MCP Config"
         OpenViewer = "Open Memory Viewer"
         MemorySettings = "Memory Settings"
+        StorageSettings = "Storage Settings"
+        StorageTitle = "Storage Locations"
+        StorageHomeRow = "CrossAgnetCoding data (workspaces, shared prompts, settings)"
+        StorageServiceRow = "AgentMemory data (memory store data/ and service log)"
+        StorageModelRow = "Model cache (local embedding model all-MiniLM-L6-v2)"
+        StorageChooseMigrate = "Choose & migrate…"
+        StorageNote = "Migration copies existing data to the new folder and switches the pointer (old folder kept). AgentMemory folders apply after a service restart."
+        StoragePickService = "Choose AgentMemory data directory"
+        StoragePickModel = "Choose model cache directory"
+        StorageMigrated = "Migrated to: {0} (restart the service to apply)"
         CheckStatus = "Check Status"
         ViewerNotRunning = "Service is not running. Start it before opening the viewer."
         StatusRequested = "Querying AgentMemory status…"
@@ -237,7 +258,8 @@ $script:Text = @{
         MigrateDataDone = "Data directory migrated: {0}"
         MigrateDataTitle = "Migration Complete"
         Log = "Log"
-        DataPathInfo = "Data dir: {0}      Service log: {1}"
+        DataPathInfo = "Data dir: {0}      AgentMemory storage: {1}"
+        ModelCacheLabel = "Model cache: {0}"
         Ready = "Ready"
         NodeInstalled = "Node.js - Installed {0}"
         NodeMissing = "Node.js - Not Installed"
@@ -1164,7 +1186,17 @@ function Get-MemoryEnvMap {
         COHERE_API_KEY     = ""
         AGENTMEMORY_TOOLS  = ""
         HF_ENDPOINT        = ""
+        TRANSFORMERS_CACHE = ""
+        HF_HOME            = ""
+        HF_HUB_CACHE       = ""
     }
+
+    # Local embedding model download location (relocatable storage). Several env
+    # names exist across Transformers.js / HF tooling versions, so set them all.
+    $modelCacheDir = Get-ModelCacheDir
+    $map["TRANSFORMERS_CACHE"] = $modelCacheDir
+    $map["HF_HOME"] = $modelCacheDir
+    $map["HF_HUB_CACHE"] = $modelCacheDir
 
     # Embedding leg of hybrid search.
     if ($m.EmbeddingMode -eq "local") {
@@ -1284,6 +1316,116 @@ function Move-CrossAgnetCodingHome {
         NewHome = $targetHome
         SettingsPath = Get-CrossAgnetCodingSettingsPath
         Migrated = (-not $SwitchOnly)
+    }
+}
+
+function Get-StorageSettings {
+    # Relocatable storage roots. serviceDir is the working directory the
+    # AgentMemory service runs in, so its iii data store (./data/state_store.db
+    # and ./data/stream_store) and service log land there. modelCacheDir is where
+    # the local embedding model (all-MiniLM-L6-v2) is downloaded.
+    $settings = Read-CrossAgnetCodingSettings
+    $storage = $null
+    if ($settings.PSObject.Properties.Name -contains "storage") {
+        $storage = $settings.storage
+    }
+
+    $serviceDir = $script:AM_DIR
+    if ($null -ne $storage -and ($storage.PSObject.Properties.Name -contains "serviceDir") -and -not [string]::IsNullOrWhiteSpace([string]$storage.serviceDir)) {
+        $serviceDir = [System.IO.Path]::GetFullPath([string]$storage.serviceDir)
+    }
+
+    $modelCacheDir = Join-Path $serviceDir "models"
+    if ($null -ne $storage -and ($storage.PSObject.Properties.Name -contains "modelCacheDir") -and -not [string]::IsNullOrWhiteSpace([string]$storage.modelCacheDir)) {
+        $modelCacheDir = [System.IO.Path]::GetFullPath([string]$storage.modelCacheDir)
+    }
+
+    return [pscustomobject]@{
+        ServiceDir    = $serviceDir
+        ModelCacheDir = $modelCacheDir
+    }
+}
+
+function Set-StorageSetting {
+    param(
+        [string]$Key,    # serviceDir | modelCacheDir
+        [string]$Value
+    )
+
+    $settings = Read-CrossAgnetCodingSettings
+    $storage = if ($settings.PSObject.Properties.Name -contains "storage") { $settings.storage } else { [pscustomobject]@{} }
+    $storage | Add-Member -NotePropertyName $Key -NotePropertyValue $Value -Force
+    $settings | Add-Member -NotePropertyName "storage" -NotePropertyValue $storage -Force
+    return (Write-CrossAgnetCodingSettings -Settings $settings)
+}
+
+function Get-ServiceWorkDir {
+    return (Get-StorageSettings).ServiceDir
+}
+
+function Get-ModelCacheDir {
+    return (Get-StorageSettings).ModelCacheDir
+}
+
+function Get-ServiceLogPath {
+    return (Join-Path (Get-ServiceWorkDir) "agentmemory-service.log")
+}
+
+function Copy-DirectoryContents {
+    param(
+        [string]$From,
+        [string]$To
+    )
+
+    if (-not (Test-Path -LiteralPath $To)) {
+        New-Item -ItemType Directory -Path $To -Force | Out-Null
+    }
+    if (Test-Path -LiteralPath $From) {
+        Get-ChildItem -LiteralPath $From -Force -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $To $_.Name) -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Move-StorageLocation {
+    param(
+        [string]$Key,        # serviceDir | modelCacheDir
+        [string]$NewDir,
+        [switch]$SwitchOnly  # only repoint, do not copy existing data
+    )
+
+    if ([string]::IsNullOrWhiteSpace($NewDir)) {
+        throw "New storage directory is required"
+    }
+
+    $target = [System.IO.Path]::GetFullPath($NewDir)
+    $current = if ($Key -eq "modelCacheDir") { Get-ModelCacheDir } else { Get-ServiceWorkDir }
+    $currentFull = [System.IO.Path]::GetFullPath($current).TrimEnd("\", "/")
+    $targetFull = $target.TrimEnd("\", "/")
+
+    if (-not (Test-Path -LiteralPath $target)) {
+        New-Item -ItemType Directory -Path $target -Force | Out-Null
+    }
+
+    # Verify writability up front.
+    $probe = Join-Path $target ".write-test"
+    Set-Content -LiteralPath $probe -Value "ok" -Encoding UTF8
+    Remove-Item -LiteralPath $probe -Force
+
+    if ($targetFull.StartsWith($currentFull, [System.StringComparison]::OrdinalIgnoreCase) -and $targetFull -ne $currentFull) {
+        throw "New directory cannot be inside the current storage directory during migration"
+    }
+
+    if (-not $SwitchOnly -and $targetFull -ne $currentFull -and (Test-Path -LiteralPath $current)) {
+        Copy-DirectoryContents -From $current -To $target
+    }
+
+    [void](Set-StorageSetting -Key $Key -Value $target)
+
+    return [pscustomobject]@{
+        Key = $Key
+        OldDir = $current
+        NewDir = $target
     }
 }
 
@@ -1587,6 +1729,7 @@ function Invoke-HiddenProcess {
         [string]$FilePath,
         [string]$Arguments,
         [int]$TimeoutSeconds = 0,
+        [string]$WorkingDirectory = "",
         [switch]$Wait
     )
 
@@ -1596,6 +1739,9 @@ function Invoke-HiddenProcess {
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
     $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+    if (-not [string]::IsNullOrWhiteSpace($WorkingDirectory)) {
+        $psi.WorkingDirectory = $WorkingDirectory
+    }
 
     if ($Wait) {
         $psi.RedirectStandardOutput = $true
@@ -1731,6 +1877,23 @@ function Invoke-CliMode {
             if ($name -match "API_KEY" -and -not [string]::IsNullOrWhiteSpace($value)) { $value = "***set***" }
             Write-Output "$name=$value"
         }
+        return
+    } elseif ($command -eq "storage show") {
+        $s = Get-StorageSettings
+        Write-Output "crossAgnetCodingHome: $(Get-CrossAgnetCodingHome)"
+        Write-Output "serviceDir: $($s.ServiceDir)"
+        Write-Output "modelCacheDir: $($s.ModelCacheDir)"
+        Write-Output "serviceLog: $(Get-ServiceLogPath)"
+        return
+    } elseif ($command -match "^storage service ") {
+        if ($CliArgs.Count -lt 3) { Write-Error "storage service requires a target path"; $script:CliExitCode = 2; return }
+        $r = Move-StorageLocation -Key "serviceDir" -NewDir $CliArgs[2]
+        Write-Output "serviceDir migrated: $($r.NewDir)"
+        return
+    } elseif ($command -match "^storage model ") {
+        if ($CliArgs.Count -lt 3) { Write-Error "storage model requires a target path"; $script:CliExitCode = 2; return }
+        $r = Move-StorageLocation -Key "modelCacheDir" -NewDir $CliArgs[2]
+        Write-Output "modelCacheDir migrated: $($r.NewDir)"
         return
     } elseif ($command -match "^config migrate ") {
         if ($CliArgs.Count -lt 3) {
@@ -2099,7 +2262,7 @@ function Apply-Language {
     $script:BtnCopyCli.Text = T "CopyCli"
     $script:BtnSyncShared.Text = T "SyncSharedFiles"
     $script:BtnWorkspaceBridge.Text = T "BridgeWorkspace"
-    $script:BtnMigrateHome.Text = T "MigrateDataHome"
+    $script:BtnMigrateHome.Text = T "StorageSettings"
     $script:LogGroup.Text = T "Log"
     Update-DataPathLabel
 }
@@ -2110,9 +2273,8 @@ function Update-DataPathLabel {
     }
 
     $dataHome = Get-CrossAgnetCodingHome
-    $serviceLog = Join-Path $script:AM_DIR "agentmemory-service.log"
-    $line1 = T "DataPathInfo" @($dataHome, $serviceLog)
-    $line2 = T "PortsInfo" @($script:PORT, $script:STREAMS_PORT, $script:VIEWER_PORT)
+    $line1 = T "DataPathInfo" @($dataHome, (Get-ServiceWorkDir))
+    $line2 = (T "ModelCacheLabel" @((Get-ModelCacheDir))) + "      " + (T "PortsInfo" @($script:PORT, $script:STREAMS_PORT, $script:VIEWER_PORT))
     $script:DataPathLabel.Text = $line1 + "`r`n" + $line2
 }
 
@@ -2338,19 +2500,28 @@ function Start-AgentMemory {
 
         Set-ManagerEnv
         Apply-MemoryEnv
-        New-Item -ItemType Directory -Path $script:AM_DIR -Force | Out-Null
-        Remove-Item -LiteralPath (Join-Path $script:AM_DIR "iii.pid") -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath (Join-Path $script:AM_DIR "engine-state.json") -Force -ErrorAction SilentlyContinue
+
+        # The service writes its iii data store to ./data relative to its working
+        # directory, so run it inside the configurable storage dir (keeps the
+        # growing state_store/stream_store off the launch folder and on whatever
+        # drive the user picked).
+        $workDir = Get-ServiceWorkDir
+        New-Item -ItemType Directory -Path $workDir -Force | Out-Null
+        New-Item -ItemType Directory -Path (Get-ModelCacheDir) -Force | Out-Null
+        foreach ($dir in @($script:AM_DIR, $workDir)) {
+            Remove-Item -LiteralPath (Join-Path $dir "iii.pid") -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath (Join-Path $dir "engine-state.json") -Force -ErrorAction SilentlyContinue
+        }
 
         $agentMemoryCmd = Join-Path $script:NPM_GLOBAL "agentmemory.cmd"
-        $serviceLog = Join-Path $script:AM_DIR "agentmemory-service.log"
+        $serviceLog = Get-ServiceLogPath
         Remove-Item -LiteralPath $serviceLog -Force -ErrorAction SilentlyContinue
 
         Write-Log (T "StartRequested")
         Write-Log (T "ServiceLog" @($serviceLog))
 
         $cmdLine = "/d /c `"`"$agentMemoryCmd`" > `"$serviceLog`" 2>&1`""
-        Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments $cmdLine | Out-Null
+        Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments $cmdLine -WorkingDirectory $workDir | Out-Null
 
         $timeout = 60
         $started = $false
@@ -2772,6 +2943,130 @@ function Migrate-DataHomeFromUi {
     }
 }
 
+function Migrate-StorageLocationFromUi {
+    param(
+        [string]$Key,            # serviceDir | modelCacheDir
+        [string]$PromptKey,
+        [string]$CurrentDir
+    )
+
+    $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dialog.Description = T $PromptKey
+    $dialog.ShowNewFolderButton = $true
+    if (Test-Path -LiteralPath $CurrentDir) { $dialog.SelectedPath = $CurrentDir }
+
+    try {
+        if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+            return $false
+        }
+
+        Set-Busy $true
+        $result = Move-StorageLocation -Key $Key -NewDir $dialog.SelectedPath
+        Write-Log "Storage [$Key]: $($result.NewDir)"
+        Set-ActionFeedback (T "StorageMigrated" @($result.NewDir)) ([System.Drawing.Color]::DarkGreen)
+        return $true
+    } catch {
+        Set-ActionFeedback $_.Exception.Message ([System.Drawing.Color]::Red)
+        Write-Log $_.Exception.Message
+        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgnetCoding", "OK", "Error") | Out-Null
+        return $false
+    } finally {
+        Set-Busy $false
+        $dialog.Dispose()
+    }
+}
+
+function Show-StorageSettingsDialog {
+    $dlg = New-Object System.Windows.Forms.Form
+    $dlg.Text = T "StorageTitle"
+    $dlg.Size = New-Object System.Drawing.Size(680, 348)
+    $dlg.StartPosition = "CenterParent"
+    $dlg.FormBorderStyle = "FixedDialog"
+    $dlg.MaximizeBox = $false
+    $dlg.MinimizeBox = $false
+    $dlg.BackColor = [System.Drawing.Color]::White
+
+    $rows = @(
+        @{ Name = (T "StorageHomeRow");    Get = { Get-CrossAgnetCodingHome }; Action = "home" },
+        @{ Name = (T "StorageServiceRow"); Get = { Get-ServiceWorkDir };       Action = "service" },
+        @{ Name = (T "StorageModelRow");   Get = { Get-ModelCacheDir };        Action = "model" }
+    )
+
+    $pathLabels = @()
+    $y = 18
+    for ($i = 0; $i -lt $rows.Count; $i++) {
+        $row = $rows[$i]
+
+        $nameLb = New-Object System.Windows.Forms.Label
+        $nameLb.Text = $row.Name
+        $nameLb.Location = New-Object System.Drawing.Point(20, $y)
+        $nameLb.Size = New-Object System.Drawing.Size(630, 20)
+        $nameLb.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        $dlg.Controls.Add($nameLb)
+
+        $pathLb = New-Object System.Windows.Forms.Label
+        $pathLb.Text = [string](& $row.Get)
+        $pathLb.Location = New-Object System.Drawing.Point(20, ($y + 24))
+        $pathLb.Size = New-Object System.Drawing.Size(490, 36)
+        $pathLb.Font = New-Object System.Drawing.Font("Segoe UI", 8.5)
+        $pathLb.ForeColor = [System.Drawing.Color]::FromArgb(107, 114, 128)
+        $dlg.Controls.Add($pathLb)
+        $pathLabels += $pathLb
+
+        $btn = New-Object System.Windows.Forms.Button
+        $btn.Text = T "StorageChooseMigrate"
+        $btn.Location = New-Object System.Drawing.Point(524, ($y + 22))
+        $btn.Size = New-Object System.Drawing.Size(120, 30)
+        $btn.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+        $btn.Tag = $row.Action
+        $dlg.Controls.Add($btn)
+
+        $y += 78
+    }
+
+    $refresh = {
+        $pathLabels[0].Text = [string](Get-CrossAgnetCodingHome)
+        $pathLabels[1].Text = [string](Get-ServiceWorkDir)
+        $pathLabels[2].Text = [string](Get-ModelCacheDir)
+        Update-DataPathLabel
+    }
+
+    foreach ($c in $dlg.Controls) {
+        if ($c -is [System.Windows.Forms.Button] -and $c.Tag) {
+            $c.Add_Click({
+                switch ([string]$this.Tag) {
+                    "home"    { [void](Migrate-DataHomeFromUi) }
+                    "service" { [void](Migrate-StorageLocationFromUi -Key "serviceDir" -PromptKey "StoragePickService" -CurrentDir (Get-ServiceWorkDir)) }
+                    "model"   { [void](Migrate-StorageLocationFromUi -Key "modelCacheDir" -PromptKey "StoragePickModel" -CurrentDir (Get-ModelCacheDir)) }
+                }
+                & $refresh
+            })
+        }
+    }
+
+    $noteLb = New-Object System.Windows.Forms.Label
+    $noteLb.Text = T "StorageNote"
+    $noteLb.Location = New-Object System.Drawing.Point(20, ($y + 4))
+    $noteLb.Size = New-Object System.Drawing.Size(630, 36)
+    $noteLb.Font = New-Object System.Drawing.Font("Segoe UI", 8.5)
+    $noteLb.ForeColor = [System.Drawing.Color]::FromArgb(107, 114, 128)
+    $dlg.Controls.Add($noteLb)
+
+    $btnClose = New-Object System.Windows.Forms.Button
+    $btnClose.Text = "OK"
+    $btnClose.Location = New-Object System.Drawing.Point(554, ($y + 46))
+    $btnClose.Size = New-Object System.Drawing.Size(90, 30)
+    $btnClose.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $btnClose.BackColor = [System.Drawing.Color]::FromArgb(24, 144, 255)
+    $btnClose.ForeColor = [System.Drawing.Color]::White
+    $btnClose.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $dlg.Controls.Add($btnClose)
+    $dlg.AcceptButton = $btnClose
+
+    [void]$dlg.ShowDialog()
+    $dlg.Dispose()
+}
+
 function Configure-AgentToolFromUi {
     param([string]$TargetId)
 
@@ -3132,7 +3427,7 @@ $script:BtnConfigureAgents.Add_Click({ Configure-AgentClients })
 $script:BtnCopyCli.Add_Click({ Copy-CliCommands })
 $script:BtnSyncShared.Add_Click({ Sync-SharedFilesFromUi })
 $script:BtnWorkspaceBridge.Add_Click({ Bridge-WorkspaceFromUi })
-$script:BtnMigrateHome.Add_Click({ Migrate-DataHomeFromUi })
+$script:BtnMigrateHome.Add_Click({ Show-StorageSettingsDialog })
 
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 5000
