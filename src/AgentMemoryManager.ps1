@@ -7,14 +7,60 @@
     [string[]]$CommandArgs = @()
 )
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+# --- Platform detection ---
+$script:IsWindows = $PSVersionTable.PSVersion.Major -ge 6 -and $IsWindows -or ([Environment]::OSVersion.Platform -eq 'Win32NT')
+$script:IsMacOS   = $PSVersionTable.PSVersion.Major -ge 6 -and $IsMacOS   -or ($false)
+$script:IsLinux   = $PSVersionTable.PSVersion.Major -ge 6 -and $IsLinux   -or ($false)
+# Fallback for PowerShell 5.1 on Windows
+if ($PSVersionTable.PSVersion.Major -lt 6) {
+    $script:IsWindows = $true
+    $script:IsMacOS   = $false
+    $script:IsLinux   = $false
+}
+
+# Architecture detection
+$script:IsArm64 = $false
+try {
+    $arch = if ($script:IsWindows) {
+        [System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture
+    } else {
+        (uname -m 2>$null) -replace '\s+', ''
+    }
+    $script:IsArm64 = ($arch -eq 'Arm64') -or ($arch -match '^(arm64|aarch64)$')
+} catch {}
+
+# Platform-specific paths
+if ($script:IsWindows) {
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+    $script:HomeDir = $env:USERPROFILE
+    $script:AppDataDir = $env:APPDATA
+    $script:LocalAppDataDir = $env:LOCALAPPDATA
+    $script:TempDir = $env:TEMP
+    $script:PathSep = ";"
+    $script:ExeExt = ".exe"
+    $script:CmdExt = ".cmd"
+    $script:NodeExe = "node.exe"
+    $script:ShellCmd = "cmd.exe"
+    $script:ShellArgs = "/d /c"
+} else {
+    $script:HomeDir = $env:HOME
+    $script:AppDataDir = Join-Path $env:HOME ".config"
+    $script:LocalAppDataDir = Join-Path $env:HOME ".local"
+    $script:TempDir = if ($env:TMPDIR) { $env:TMPDIR } else { "/tmp" }
+    $script:PathSep = ":"
+    $script:ExeExt = ""
+    $script:CmdExt = ""
+    $script:NodeExe = "node"
+    $script:ShellCmd = "/bin/sh"
+    $script:ShellArgs = "-c"
+}
 
 $ErrorActionPreference = "Continue"
 
-$script:AM_DIR = Join-Path $env:USERPROFILE ".agentmemory"
-$script:LOCAL_BIN = Join-Path $env:USERPROFILE ".local\bin"
-$script:NPM_GLOBAL = Join-Path $env:APPDATA "npm"
+$script:AM_DIR = Join-Path $script:HomeDir ".agentmemory"
+$script:LOCAL_BIN = Join-Path $script:LocalAppDataDir "bin"
+$script:NPM_GLOBAL = if ($script:IsWindows) { Join-Path $script:AppDataDir "npm" } else { Join-Path $script:HomeDir ".npm-global" }
 $script:APP_NAME = "CrossAgnetCoding"
 $script:APP_VERSION = "0.0.1"
 $script:III_VERSION = "v0.11.2"
@@ -356,17 +402,17 @@ function T {
 }
 
 function Set-ManagerEnv {
-    $env:HOME = $env:USERPROFILE
+    $env:HOME = $script:HomeDir
 
     $parts = @(
         (Join-Path $script:AM_DIR "bin"),
         $script:LOCAL_BIN,
-        "C:\Program Files\nodejs",
+        $(if ($script:IsWindows) { "${env:ProgramFiles}\nodejs" } else { "/usr/local/bin" }),
         $script:NPM_GLOBAL,
         $env:Path
     )
 
-    $env:Path = ($parts | Where-Object { $_ -and $_.Trim().Length -gt 0 }) -join ";"
+    $env:Path = ($parts | Where-Object { $_ -and $_.Trim().Length -gt 0 }) -join $script:PathSep
 }
 
 function Get-NodeVersionFromFile {
@@ -402,7 +448,7 @@ function Get-NodeVersion {
     }
 
     try {
-        $nodeSource = Get-CommandPathSafe -Name "node.exe"
+        $nodeSource = Get-CommandPathSafe -Name $script:NodeExe
         if ([string]::IsNullOrWhiteSpace($nodeSource)) {
             $script:NodeVersionFailureTime = $now
             return ""
@@ -432,15 +478,27 @@ function Get-NodeVersion {
 }
 
 function Test-ServiceRunning {
-    try {
-        $conn = Get-NetTCPConnection -LocalPort $script:PORT -State Listen -ErrorAction Stop
-        return ($null -ne $conn)
-    } catch {
-        return $false
+    if ($script:IsWindows) {
+        try {
+            $conn = Get-NetTCPConnection -LocalPort $script:PORT -State Listen -ErrorAction Stop
+            return ($null -ne $conn)
+        } catch {
+            return $false
+        }
+    } else {
+        try {
+            $response = Invoke-WebRequest -Uri "http://localhost:$($script:PORT)/api/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+            return ($response.StatusCode -eq 200)
+        } catch {
+            return $false
+        }
     }
 }
 
 function Get-ServicePids {
+    if (-not $script:IsWindows) {
+        return @()
+    }
     try {
         return @(Get-NetTCPConnection -LocalPort $script:PORT -State Listen -ErrorAction Stop |
             Select-Object -ExpandProperty OwningProcess -Unique |
@@ -457,6 +515,10 @@ function Get-ProcessCommandLineById {
         return ""
     }
 
+    if (-not $script:IsWindows) {
+        return ""
+    }
+
     try {
         $proc = Get-CimInstance Win32_Process -Filter ("ProcessId = {0}" -f $ProcessId) -ErrorAction Stop
         if ($proc -and -not [string]::IsNullOrWhiteSpace([string]$proc.CommandLine)) {
@@ -470,6 +532,10 @@ function Get-ProcessCommandLineById {
 
 function Get-ServicePortConflicts {
     param([int[]]$Ports = @($script:PORT, $script:STREAMS_PORT, $script:VIEWER_PORT))
+
+    if (-not $script:IsWindows) {
+        return @()
+    }
 
     $conflicts = New-Object System.Collections.ArrayList
     foreach ($port in $Ports) {
@@ -589,7 +655,7 @@ function Get-ServiceStartupFailureDetail {
 }
 
 function Get-AgentMemoryPackageJsonPath {
-    return (Join-Path $script:NPM_GLOBAL "node_modules\@agentmemory\agentmemory\package.json")
+    return [System.IO.Path]::Combine($script:NPM_GLOBAL, "node_modules", "@agentmemory", "agentmemory", "package.json")
 }
 
 function Get-AgentMemoryVersion {
@@ -611,9 +677,9 @@ function Get-EnvironmentStatus {
     Set-ManagerEnv
 
     $nodeVersion = Get-NodeVersion
-    $agentMemoryCmd = Join-Path $script:NPM_GLOBAL "agentmemory.cmd"
-    $iiiInAgentMemory = Join-Path $script:AM_DIR "bin\iii.exe"
-    $iiiInLocal = Join-Path $script:LOCAL_BIN "iii.exe"
+    $agentMemoryCmd = Join-Path $script:NPM_GLOBAL "agentmemory$($script:CmdExt)"
+    $iiiInAgentMemory = [System.IO.Path]::Combine($script:AM_DIR, "bin", "iii$($script:ExeExt)")
+    $iiiInLocal = [System.IO.Path]::Combine($script:LOCAL_BIN, "iii$($script:ExeExt)")
 
     return [pscustomobject]@{
         Node = ($nodeVersion.Length -gt 0)
@@ -632,7 +698,7 @@ function Get-AgentMemoryLatestVersion {
     # China mirrors). Returns "" on any failure (offline / blocked).
     try {
         Set-ManagerEnv
-        $result = Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments "/d /c npm view @agentmemory/agentmemory version" -Wait -TimeoutSeconds 60
+        $result = Invoke-HiddenProcess -FilePath $script:ShellCmd -Arguments "$($script:ShellArgs) npm view @agentmemory/agentmemory version" -Wait -TimeoutSeconds 60
         if ($result.ExitCode -eq 0) {
             $v = ([string]$result.Output).Trim()
             if ($v -match "^\d+\.\d+\.\d+") {
@@ -792,15 +858,15 @@ function Get-CodexConfigPath {
         return (Join-Path $env:CODEX_HOME "config.toml")
     }
 
-    return (Join-Path $env:USERPROFILE ".codex\config.toml")
+    return ([System.IO.Path]::Combine($script:HomeDir, ".codex", "config.toml"))
 }
 
 function Get-TraeConfigPath {
-    return (Join-Path $env:APPDATA "TRAE SOLO CN\User\mcp.json")
+    return ([System.IO.Path]::Combine($script:AppDataDir, "TRAE SOLO CN", "User", "mcp.json"))
 }
 
 function Get-TraeSoloConfigPath {
-    return (Join-Path $env:APPDATA "TRAE SOLO\User\mcp.json")
+    return ([System.IO.Path]::Combine($script:AppDataDir, "TRAE SOLO", "User", "mcp.json"))
 }
 
 function Get-TraeConfigPaths {
@@ -814,31 +880,31 @@ function Get-QoderCnConfigPath {
     # Qoder CN is a VS Code-based AI IDE. Its MCP servers live in the shared
     # client cache (verified against an installed build), using the same
     # mcpServers JSON schema as TRAE SOLO.
-    return (Join-Path $env:APPDATA "QoderCN\SharedClientCache\mcp.json")
+    return ([System.IO.Path]::Combine($script:AppDataDir, "QoderCN", "SharedClientCache", "mcp.json"))
 }
 
 function Get-OpenCodeConfigPath {
-    return (Join-Path $env:USERPROFILE ".config\opencode\opencode.json")
+    return ([System.IO.Path]::Combine($script:HomeDir, ".config", "opencode", "opencode.json"))
 }
 
 function Get-ClaudeConfigPath {
-    return (Join-Path $env:USERPROFILE ".claude\mcp.json")
+    return ([System.IO.Path]::Combine($script:HomeDir, ".claude", "mcp.json"))
 }
 
 function Get-ClaudeDesktopConfigPath {
-    return (Join-Path $env:APPDATA "Claude\claude_desktop_config.json")
+    return ([System.IO.Path]::Combine($script:AppDataDir, "Claude", "claude_desktop_config.json"))
 }
 
 function Get-GeminiConfigPath {
-    return (Join-Path $env:USERPROFILE ".gemini\settings.json")
+    return ([System.IO.Path]::Combine($script:HomeDir, ".gemini", "settings.json"))
 }
 
 function Get-OpenClawConfigPath {
-    return (Join-Path $env:USERPROFILE ".openclaw\openclaw.json")
+    return ([System.IO.Path]::Combine($script:HomeDir, ".openclaw", "openclaw.json"))
 }
 
 function Get-HermesConfigPath {
-    return (Join-Path $env:USERPROFILE ".hermes\config.yaml")
+    return ([System.IO.Path]::Combine($script:HomeDir, ".hermes", "config.yaml"))
 }
 
 function Get-AgentTargetDefinitions {
@@ -846,7 +912,7 @@ function Get-AgentTargetDefinitions {
         [pscustomobject]@{
             Id = "codex"
             Name = "Codex"
-            CommandNames = @("codex.exe", "codex")
+            CommandNames = @("codex$($script:ExeExt)", "codex")
             InstallRoot = (Split-Path -Parent (Get-CodexConfigPath))
             ConfigPath = Get-CodexConfigPath
             PromptFile = "AGENTS.md"
@@ -856,7 +922,7 @@ function Get-AgentTargetDefinitions {
             Id = "trae-cn"
             Name = "TRAE SOLO CN"
             CommandNames = @()
-            InstallRoot = (Join-Path $env:APPDATA "TRAE SOLO CN")
+            InstallRoot = (Join-Path $script:AppDataDir "TRAE SOLO CN")
             ConfigPath = Get-TraeConfigPath
             PromptFile = "TRAE.md"
             ConfigureAction = "Configure-TraeCnMcp"
@@ -865,7 +931,7 @@ function Get-AgentTargetDefinitions {
             Id = "trae"
             Name = "TRAE SOLO"
             CommandNames = @()
-            InstallRoot = (Join-Path $env:APPDATA "TRAE SOLO")
+            InstallRoot = (Join-Path $script:AppDataDir "TRAE SOLO")
             ConfigPath = Get-TraeSoloConfigPath
             PromptFile = "TRAE.md"
             ConfigureAction = "Configure-TraeSoloMcp"
@@ -874,7 +940,7 @@ function Get-AgentTargetDefinitions {
             Id = "qoder-cn"
             Name = "Qoder CN"
             CommandNames = @()
-            InstallRoot = (Join-Path $env:APPDATA "QoderCN")
+            InstallRoot = (Join-Path $script:AppDataDir "QoderCN")
             ConfigPath = Get-QoderCnConfigPath
             PromptFile = "AGENTS.md"
             ConfigureAction = "Configure-QoderCnMcp"
@@ -882,8 +948,8 @@ function Get-AgentTargetDefinitions {
         [pscustomobject]@{
             Id = "claude-code"
             Name = "Claude Code"
-            CommandNames = @("claude.exe", "claude")
-            InstallRoot = (Join-Path $env:USERPROFILE ".claude")
+            CommandNames = @("claude$($script:ExeExt)", "claude")
+            InstallRoot = (Join-Path $script:HomeDir ".claude")
             ConfigPath = Get-ClaudeConfigPath
             PromptFile = "CLAUDE.md"
             ConfigureAction = "Configure-ClaudeMcp"
@@ -892,7 +958,7 @@ function Get-AgentTargetDefinitions {
             Id = "claude-desktop"
             Name = "Claude Desktop"
             CommandNames = @()
-            InstallRoot = (Join-Path $env:APPDATA "Claude")
+            InstallRoot = (Join-Path $script:AppDataDir "Claude")
             ConfigPath = Get-ClaudeDesktopConfigPath
             PromptFile = "CLAUDE.md"
             ConfigureAction = "Configure-ClaudeDesktopMcp"
@@ -900,8 +966,8 @@ function Get-AgentTargetDefinitions {
         [pscustomobject]@{
             Id = "gemini"
             Name = "Gemini CLI"
-            CommandNames = @("gemini.exe", "gemini.cmd", "gemini")
-            InstallRoot = (Join-Path $env:USERPROFILE ".gemini")
+            CommandNames = @("gemini$($script:ExeExt)", "gemini$($script:CmdExt)", "gemini")
+            InstallRoot = (Join-Path $script:HomeDir ".gemini")
             ConfigPath = Get-GeminiConfigPath
             PromptFile = "GEMINI.md"
             ConfigureAction = "Configure-GeminiMcp"
@@ -909,8 +975,8 @@ function Get-AgentTargetDefinitions {
         [pscustomobject]@{
             Id = "opencode"
             Name = "OpenCode"
-            CommandNames = @("opencode.exe", "opencode")
-            InstallRoot = (Join-Path $env:USERPROFILE ".config\opencode")
+            CommandNames = @("opencode$($script:ExeExt)", "opencode")
+            InstallRoot = ([System.IO.Path]::Combine($script:HomeDir, ".config", "opencode"))
             ConfigPath = Get-OpenCodeConfigPath
             PromptFile = "AGENTS.md"
             ConfigureAction = "Configure-OpenCodeMcp"
@@ -918,8 +984,8 @@ function Get-AgentTargetDefinitions {
         [pscustomobject]@{
             Id = "openclaw"
             Name = "OpenClaw"
-            CommandNames = @("openclaw.exe", "openclaw")
-            InstallRoot = (Join-Path $env:USERPROFILE ".openclaw")
+            CommandNames = @("openclaw$($script:ExeExt)", "openclaw")
+            InstallRoot = (Join-Path $script:HomeDir ".openclaw")
             ConfigPath = Get-OpenClawConfigPath
             PromptFile = "OPENCLAW.md"
             ConfigureAction = "Configure-OpenClawMcp"
@@ -927,8 +993,8 @@ function Get-AgentTargetDefinitions {
         [pscustomobject]@{
             Id = "hermes"
             Name = "Hermes Agent"
-            CommandNames = @("hermes.exe", "hermes")
-            InstallRoot = (Join-Path $env:USERPROFILE ".hermes")
+            CommandNames = @("hermes$($script:ExeExt)", "hermes")
+            InstallRoot = (Join-Path $script:HomeDir ".hermes")
             ConfigPath = Get-HermesConfigPath
             PromptFile = "HERMES.md"
             ConfigureAction = "Configure-HermesMcp"
@@ -1060,16 +1126,24 @@ memory:
 
 function Get-CliConfigCommands {
     $mcpJson = '{"command":"npx","args":["-y","@agentmemory/mcp"],"env":{"AGENTMEMORY_URL":"http://localhost:3111"}}'
+    $codexPath = [System.IO.Path]::Combine($script:HomeDir, ".codex", "config.toml")
+     $traeCnPath = [System.IO.Path]::Combine($script:AppDataDir, "TRAE SOLO CN", "User", "mcp.json")
+     $traePath = [System.IO.Path]::Combine($script:AppDataDir, "TRAE SOLO", "User", "mcp.json")
+     $qoderPath = [System.IO.Path]::Combine($script:AppDataDir, "QoderCN", "SharedClientCache", "mcp.json")
+     $geminiPath = [System.IO.Path]::Combine($script:HomeDir, ".gemini", "settings.json")
+     $opencodePath = [System.IO.Path]::Combine($script:HomeDir, ".config", "opencode", "opencode.json")
+     $openclawPath = [System.IO.Path]::Combine($script:HomeDir, ".openclaw", "openclaw.json")
+     $hermesPath = [System.IO.Path]::Combine($script:HomeDir, ".hermes", "config.yaml")
     return @(
         'claude mcp add-json agentmemory ''' + $mcpJson + '''',
-        'codex: add [mcp_servers.agentmemory] to %USERPROFILE%\.codex\config.toml',
-        'TRAE SOLO CN: paste mcpServers.agentmemory into %APPDATA%\TRAE SOLO CN\User\mcp.json',
-        'TRAE SOLO: paste mcpServers.agentmemory into %APPDATA%\TRAE SOLO\User\mcp.json',
-        'Qoder CN: paste mcpServers.agentmemory into %APPDATA%\QoderCN\SharedClientCache\mcp.json',
-        'Gemini CLI: add mcpServers.agentmemory to %USERPROFILE%\.gemini\settings.json',
-        'OpenCode: add mcp.agentmemory to %USERPROFILE%\.config\opencode\opencode.json',
-        'OpenClaw: add mcpServers.agentmemory to %USERPROFILE%\.openclaw\openclaw.json',
-        'Hermes: add mcp_servers.agentmemory to %USERPROFILE%\.hermes\config.yaml'
+        "codex: add [mcp_servers.agentmemory] to $codexPath",
+        "TRAE SOLO CN: paste mcpServers.agentmemory into $traeCnPath",
+        "TRAE SOLO: paste mcpServers.agentmemory into $traePath",
+        "Qoder CN: paste mcpServers.agentmemory into $qoderPath",
+        "Gemini CLI: add mcpServers.agentmemory to $geminiPath",
+        "OpenCode: add mcp.agentmemory to $opencodePath",
+        "OpenClaw: add mcpServers.agentmemory to $openclawPath",
+        "Hermes: add mcp_servers.agentmemory to $hermesPath"
     ) -join "`r`n"
 }
 
@@ -1201,7 +1275,7 @@ function Get-AgentToolCards {
         [void]$cards.Add([pscustomobject]@{
             Id = $target.Id
             Name = $target.Name
-            Platform = "Win"
+            Platform = if ($script:IsWindows) { "Win" } elseif ($script:IsMacOS) { "Mac" } else { "Linux" }
             Installed = [bool]$status.Installed
             Configured = [bool]$status.Configured
             ConfigPath = $status.ConfigPath
@@ -1226,7 +1300,7 @@ function Get-PlaceholderToolCards {
         [void]$cards.Add([pscustomobject]@{
             Id = $target.Id
             Name = $target.Name
-            Platform = "Win"
+            Platform = if ($script:IsWindows) { "Win" } elseif ($script:IsMacOS) { "Mac" } else { "Linux" }
             Installed = $false
             Configured = $false
             ConfigPath = [string]$target.ConfigPath
@@ -1277,7 +1351,7 @@ function Configure-AllAgentClients {
 }
 
 function Get-DefaultCrossAgnetCodingHome {
-    return (Join-Path $env:USERPROFILE ".CrossAgnetCoding")
+    return (Join-Path $script:HomeDir ".CrossAgnetCoding")
 }
 
 function Get-CrossAgnetCodingSettingsPath {
@@ -1499,11 +1573,11 @@ function Apply-MemoryEnv {
 }
 
 function Get-AgentMemoryCliPath {
-    return (Join-Path $script:NPM_GLOBAL "agentmemory.cmd")
+    return (Join-Path $script:NPM_GLOBAL "agentmemory$($script:CmdExt)")
 }
 
 function Get-XenovaTransformersPath {
-    return (Join-Path $script:NPM_GLOBAL "node_modules\@xenova\transformers")
+    return [System.IO.Path]::Combine($script:NPM_GLOBAL, "node_modules", "@xenova", "transformers")
 }
 
 function Test-LocalEmbeddingReady {
@@ -1895,8 +1969,8 @@ function Get-CodexSessionRoots {
 
 function Get-TraeDataRoots {
     return @(
-        (Join-Path $env:APPDATA "TRAE SOLO CN"),
-        (Join-Path $env:APPDATA "TRAE SOLO")
+        (Join-Path $script:AppDataDir "TRAE SOLO CN"),
+        (Join-Path $script:AppDataDir "TRAE SOLO")
     )
 }
 
@@ -2259,7 +2333,7 @@ if ($SelfTest) {
 
     # The bounded command lookup must find a real executable and return "" for a
     # missing one without throwing, so startup scans never hang the UI thread.
-    if ([string]::IsNullOrWhiteSpace((Get-CommandPathSafe -Name "powershell.exe"))) {
+    if ([string]::IsNullOrWhiteSpace((Get-CommandPathSafe -Name "powershell$($script:ExeExt)"))) {
         [void]$errors.Add("Get-CommandPathSafe failed to resolve a known executable")
     }
     if ((Get-CommandPathSafe -Name "cac-definitely-missing-cmd-xyz.exe") -ne "") {
@@ -2267,7 +2341,7 @@ if ($SelfTest) {
     }
 
     Write-Output "SELFTEST_STAGE startup-diagnostics"
-    $startupLog = Join-Path $env:TEMP ("cac-startup-log-" + [guid]::NewGuid().ToString("N") + ".log")
+    $startupLog = Join-Path $script:TempDir ("cac-startup-log-" + [guid]::NewGuid().ToString("N") + ".log")
     try {
         $esc = [char]27
         Set-Content -LiteralPath $startupLog -Encoding UTF8 -Value @(
@@ -2301,7 +2375,7 @@ if ($SelfTest) {
     # Install detection must not treat the manager's own config writes as proof of
     # installation: a directory holding only the config file (and its backups) is
     # "configured but not installed"; a real install adds other content.
-    $detectRoot = Join-Path $env:TEMP ("cac-install-" + [guid]::NewGuid().ToString("N"))
+    $detectRoot = Join-Path $script:TempDir ("cac-install-" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $detectRoot -Force | Out-Null
     try {
         $detectCfg = Join-Path $detectRoot "settings.json"
@@ -2345,7 +2419,7 @@ if ($SelfTest) {
     # directory. The write-test path forces the default location, so this branch
     # is only meaningful outside write-test mode.
     if ($env:AM_MANAGER_WRITE_TEST -ne "1") {
-        $codexHomeDir = Join-Path $env:TEMP ("cac-codexhome-" + [guid]::NewGuid().ToString("N"))
+        $codexHomeDir = Join-Path $script:TempDir ("cac-codexhome-" + [guid]::NewGuid().ToString("N"))
         New-Item -ItemType Directory -Path $codexHomeDir -Force | Out-Null
         $oldCodexHome = $env:CODEX_HOME
         try {
@@ -2385,7 +2459,7 @@ if ($SelfTest) {
             }
         }
 
-        $projectDir = Join-Path $env:USERPROFILE "sample-project"
+        $projectDir = Join-Path $script:HomeDir "sample-project"
         New-Item -ItemType Directory -Path $projectDir -Force | Out-Null
         $workspaceA = Initialize-WorkspaceMemory -ProjectPath $projectDir
         $workspaceB = Initialize-WorkspaceMemory -ProjectPath $projectDir
@@ -2399,7 +2473,7 @@ if ($SelfTest) {
         # When a Git remote is present, it must contribute to the workspace
         # identity so different repositories at the same path stay distinct.
         if (Get-Command git -ErrorAction SilentlyContinue) {
-            $gitProject = Join-Path $env:USERPROFILE "git-sample-project"
+            $gitProject = Join-Path $script:HomeDir "git-sample-project"
             New-Item -ItemType Directory -Path $gitProject -Force | Out-Null
             & git -C $gitProject init --quiet 2>$null | Out-Null
             $idBeforeRemote = Get-WorkspaceId -ProjectPath $gitProject
@@ -2422,12 +2496,12 @@ if ($SelfTest) {
             [void]$errors.Add("Handoff summary missing bridge text")
         }
 
-        $codexSessionDir = Join-Path (Split-Path -Parent (Get-CodexConfigPath)) "sessions\2026"
+        $codexSessionDir = [System.IO.Path]::Combine((Split-Path -Parent (Get-CodexConfigPath)), "sessions", "2026")
         New-Item -ItemType Directory -Path $codexSessionDir -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $codexSessionDir "sample.jsonl") -Value '{"message":"Codex worked on routing"}' -Encoding UTF8
         [void](Import-CodexSessionBridge -ProjectPath $projectDir)
 
-        $traeLogDir = Join-Path $env:APPDATA "TRAE SOLO CN\logs"
+        $traeLogDir = [System.IO.Path]::Combine($script:AppDataDir, "TRAE SOLO CN", "logs")
         New-Item -ItemType Directory -Path $traeLogDir -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $traeLogDir "sample.log") -Value "TRAE completed UI review" -Encoding UTF8
         [void](Import-TraeSessionBridge -ProjectPath $projectDir)
@@ -2443,7 +2517,7 @@ if ($SelfTest) {
             New-Item -ItemType Directory -Path $oldHome -Force | Out-Null
         }
         Set-Content -LiteralPath $markerPath -Value "keep me" -Encoding UTF8
-        $newHome = Join-Path $env:TEMP ("crossagnetcoding-home-" + [guid]::NewGuid().ToString("N"))
+        $newHome = Join-Path $script:TempDir ("crossagnetcoding-home-" + [guid]::NewGuid().ToString("N"))
         $migration = Move-CrossAgnetCodingHome -NewHome $newHome
         if ((Get-CrossAgnetCodingHome) -ne $migration.NewHome) {
             [void]$errors.Add("CrossAgnetCoding home did not switch after migration")
@@ -2485,10 +2559,13 @@ function Write-Log {
     param([string]$Message)
 
     $ts = Get-Date -Format "HH:mm:ss"
-    $script:LogBox.AppendText("[$ts] $Message`r`n")
-    $script:LogBox.SelectionStart = $script:LogBox.TextLength
-    $script:LogBox.ScrollToCaret()
-    [System.Windows.Forms.Application]::DoEvents()
+    if ($script:LogBox) {
+        $script:LogBox.AppendText("[$ts] $Message`r`n")
+        $script:LogBox.SelectionStart = $script:LogBox.TextLength
+        $script:LogBox.ScrollToCaret()
+    } else {
+        Write-Host "[$ts] $Message"
+    }
 }
 
 function Set-ActionFeedback {
@@ -2497,30 +2574,36 @@ function Set-ActionFeedback {
         [System.Drawing.Color]$Color = [System.Drawing.Color]::Black
     )
 
-    $script:ActionLabel.Text = $Message
-    $script:ActionLabel.ForeColor = $Color
-    [System.Windows.Forms.Application]::DoEvents()
+    if ($script:ActionLabel) {
+        $script:ActionLabel.Text = $Message
+        $script:ActionLabel.ForeColor = $Color
+        [System.Windows.Forms.Application]::DoEvents()
+    } else {
+        Write-Host $Message
+    }
 }
 
 function Set-Busy {
     param([bool]$Busy)
 
     $script:IsBusy = $Busy
-    $script:BtnInstall.Enabled = -not $Busy
-    $script:BtnStartStop.Enabled = -not $Busy
-    $script:BtnMcp.Enabled = -not $Busy
-    $script:BtnViewer.Enabled = -not $Busy
-    $script:BtnMemorySettings.Enabled = -not $Busy
-    $script:BtnCheckUpdate.Enabled = -not $Busy
-    $script:BtnCheckStatus.Enabled = -not $Busy
-    $script:BtnScanAgents.Enabled = -not $Busy
-    $script:BtnConfigureAgents.Enabled = -not $Busy
-    $script:BtnCopyCli.Enabled = -not $Busy
-    $script:BtnSyncShared.Enabled = -not $Busy
-    $script:BtnWorkspaceBridge.Enabled = -not $Busy
-    $script:BtnMigrateHome.Enabled = -not $Busy
-    $script:LanguageBox.Enabled = -not $Busy
-    [System.Windows.Forms.Application]::DoEvents()
+    if ($script:BtnInstall) {
+        $script:BtnInstall.Enabled = -not $Busy
+        $script:BtnStartStop.Enabled = -not $Busy
+        $script:BtnMcp.Enabled = -not $Busy
+        $script:BtnViewer.Enabled = -not $Busy
+        $script:BtnMemorySettings.Enabled = -not $Busy
+        $script:BtnCheckUpdate.Enabled = -not $Busy
+        $script:BtnCheckStatus.Enabled = -not $Busy
+        $script:BtnScanAgents.Enabled = -not $Busy
+        $script:BtnConfigureAgents.Enabled = -not $Busy
+        $script:BtnCopyCli.Enabled = -not $Busy
+        $script:BtnSyncShared.Enabled = -not $Busy
+        $script:BtnWorkspaceBridge.Enabled = -not $Busy
+        $script:BtnMigrateHome.Enabled = -not $Busy
+        $script:LanguageBox.Enabled = -not $Busy
+        [System.Windows.Forms.Application]::DoEvents()
+    }
 }
 
 function Apply-Language {
@@ -2562,6 +2645,7 @@ function Update-DataPathLabel {
 }
 
 function Update-Status {
+    if (-not $script:StatusLabel -and -not $script:NodeLabel) { return }
     $status = Get-EnvironmentStatus
 
     if ($status.Node) {
@@ -2632,6 +2716,7 @@ function Get-AgentStatusDisplayText {
 }
 
 function Update-AgentClientStatus {
+    if (-not $script:AgentStatusLabel -and ($null -eq $script:ToolCardControls -or $script:ToolCardControls.Count -eq 0)) { return }
     if ($null -ne $script:ToolCardControls -and $script:ToolCardControls.Count -gt 0) {
         Update-ToolCardControls
         return
@@ -2664,26 +2749,28 @@ function Install-All {
         if ((Get-NodeVersion).Length -gt 0) {
             Write-Log (T "AlreadyInstalled" @("Node.js"))
         } else {
-            try {
-                Write-Log "Downloading Node.js..."
-                $msi = Join-Path $env:TEMP "agentmemory-node.msi"
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi" -OutFile $msi -UseBasicParsing
-                $result = Invoke-HiddenProcess -FilePath "msiexec.exe" -Arguments "/i `"$msi`" /quiet /norestart" -Wait -TimeoutSeconds 900
-                Remove-Item -LiteralPath $msi -Force -ErrorAction SilentlyContinue
-                $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
-
-                if ($result.ExitCode -eq 0 -and (Get-NodeVersion).Length -gt 0) {
+            if ($script:IsWindows) {
+                try {
+                    Write-Log "Downloading Node.js..."
+                    $msi = Join-Path $script:TempDir "agentmemory-node.msi"
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi" -OutFile $msi -UseBasicParsing
+                    Invoke-HiddenProcess -FilePath "msiexec.exe" -Arguments "/i `"$msi`" /quiet /norestart" -Wait -TimeoutSeconds 900
+                    $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
                     Write-Log (T "InstallOk" @("Node.js"))
-                } else {
-                    Write-Log (T "InstallFail" @("Node.js", "exit $($result.ExitCode)"))
+                } catch {
+                    Write-Log (T "InstallFail" @("Node.js", $_.Exception.Message))
                 }
-            } catch {
-                Write-Log (T "InstallFail" @("Node.js", $_.Exception.Message))
+            } elseif ($script:IsMacOS) {
+                Write-Log "Node.js not found. Please install it via: brew install node@20"
+                Write-Log "Or download from: https://nodejs.org/"
+            } else {
+                Write-Log "Node.js not found. Please install it via your package manager."
+                Write-Log "e.g. sudo apt install nodejs  or  sudo dnf install nodejs"
             }
         }
 
-        $agentMemoryCmd = Join-Path $script:NPM_GLOBAL "agentmemory.cmd"
+        $agentMemoryCmd = Join-Path $script:NPM_GLOBAL "agentmemory$($script:CmdExt)"
         if (Test-Path -LiteralPath $agentMemoryCmd) {
             Write-Log (T "AlreadyInstalled" @("AgentMemory"))
         } elseif ((Get-NodeVersion).Length -eq 0) {
@@ -2691,7 +2778,7 @@ function Install-All {
         } else {
             try {
                 Write-Log "Installing AgentMemory..."
-                $result = Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments "/d /c npm install -g @agentmemory/agentmemory" -Wait -TimeoutSeconds 900
+                $result = Invoke-HiddenProcess -FilePath $script:ShellCmd -Arguments "$($script:ShellArgs) npm install -g @agentmemory/agentmemory" -Wait -TimeoutSeconds 900
                 if ($result.ExitCode -eq 0 -and (Test-Path -LiteralPath $agentMemoryCmd)) {
                     Write-Log (T "InstallOk" @("AgentMemory"))
                 } else {
@@ -2703,8 +2790,8 @@ function Install-All {
             }
         }
 
-        $iiiInAgentMemory = Join-Path $script:AM_DIR "bin\iii.exe"
-        $iiiInLocal = Join-Path $script:LOCAL_BIN "iii.exe"
+        $iiiInAgentMemory = [System.IO.Path]::Combine($script:AM_DIR, "bin", "iii$($script:ExeExt)")
+        $iiiInLocal = [System.IO.Path]::Combine($script:LOCAL_BIN, "iii$($script:ExeExt)")
         $iiiPath = if (Test-Path -LiteralPath $iiiInAgentMemory) { $iiiInAgentMemory } elseif (Test-Path -LiteralPath $iiiInLocal) { $iiiInLocal } else { $null }
         $iiiOk = $false
         if ($iiiPath) {
@@ -2728,18 +2815,25 @@ function Install-All {
                 New-Item -ItemType Directory -Path (Join-Path $script:AM_DIR "bin") -Force | Out-Null
                 New-Item -ItemType Directory -Path $script:LOCAL_BIN -Force | Out-Null
 
-                $zip = Join-Path $env:TEMP "agentmemory-iii.zip"
-                $extractDir = Join-Path $env:TEMP "agentmemory-iii"
+                $zip = Join-Path $script:TempDir "agentmemory-iii.zip"
+                $extractDir = Join-Path $script:TempDir "agentmemory-iii"
                 if (Test-Path -LiteralPath $extractDir) {
                     Remove-Item -LiteralPath $extractDir -Recurse -Force
                 }
 
                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                $iiiUrl = "https://github.com/iii-hq/iii/releases/download/iii/$script:III_VERSION/iii-x86_64-pc-windows-msvc.zip"
+                $iiiTarget = if ($script:IsWindows) {
+                    if ($script:IsArm64) { "aarch64-pc-windows-msvc" } else { "x86_64-pc-windows-msvc" }
+                } elseif ($script:IsMacOS) {
+                    if ($script:IsArm64) { "aarch64-apple-darwin" } else { "x86_64-apple-darwin" }
+                } else {
+                    if ($script:IsArm64) { "aarch64-unknown-linux-gnu" } else { "x86_64-unknown-linux-gnu" }
+                }
+                $iiiUrl = "https://github.com/iii-hq/iii/releases/download/iii/$script:III_VERSION/iii-$iiiTarget.zip"
                 Invoke-WebRequest -Uri $iiiUrl -OutFile $zip -UseBasicParsing
                 Expand-Archive -Path $zip -DestinationPath $extractDir -Force
 
-                $found = Get-ChildItem -LiteralPath $extractDir -Recurse -Filter "iii.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+                $found = Get-ChildItem -LiteralPath $extractDir -Recurse -Filter "iii$($script:ExeExt)" -ErrorAction SilentlyContinue | Select-Object -First 1
                 if ($found) {
                     Copy-Item -LiteralPath $found.FullName -Destination $iiiInLocal -Force
                     Copy-Item -LiteralPath $found.FullName -Destination $iiiInAgentMemory -Force
@@ -2751,7 +2845,7 @@ function Install-All {
                 if ((Test-Path -LiteralPath $iiiInAgentMemory) -or (Test-Path -LiteralPath $iiiInLocal)) {
                     Write-Log (T "InstallOk" @("iii-engine"))
                 } else {
-                    Write-Log (T "InstallFail" @("iii-engine", "iii.exe not found"))
+                    Write-Log (T "InstallFail" @("iii-engine", "iii$($script:ExeExt) not found"))
                 }
             } catch {
                 Write-Log (T "InstallFail" @("iii-engine", $_.Exception.Message))
@@ -2836,15 +2930,15 @@ function Start-AgentMemory {
             Remove-Item -LiteralPath (Join-Path $dir "worker.pid") -Force -ErrorAction SilentlyContinue
         }
 
-        $agentMemoryCmd = Join-Path $script:NPM_GLOBAL "agentmemory.cmd"
+        $agentMemoryCmd = Join-Path $script:NPM_GLOBAL "agentmemory$($script:CmdExt)"
         $serviceLog = Get-ServiceLogPath
         Remove-Item -LiteralPath $serviceLog -Force -ErrorAction SilentlyContinue
 
         Write-Log (T "StartRequested")
         Write-Log (T "ServiceLog" @($serviceLog))
 
-        $cmdLine = "/d /c `"`"$agentMemoryCmd`" > `"$serviceLog`" 2>&1`""
-        Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments $cmdLine -WorkingDirectory $workDir | Out-Null
+        $cmdLine = "$($script:ShellArgs) `"`"$agentMemoryCmd`" > `"$serviceLog`" 2>&1`""
+        Invoke-HiddenProcess -FilePath $script:ShellCmd -Arguments $cmdLine -WorkingDirectory $workDir | Out-Null
 
         $timeout = 60
         $started = $false
@@ -2948,7 +3042,7 @@ function Stop-AgentMemoryProcesses {
 }
 
 function Check-AgentMemoryUpdate {
-    if (-not (Test-Path -LiteralPath (Join-Path $script:NPM_GLOBAL "agentmemory.cmd"))) {
+    if (-not (Test-Path -LiteralPath (Join-Path $script:NPM_GLOBAL "agentmemory$($script:CmdExt)"))) {
         Set-ActionFeedback (T "AgentMemoryNotInstalled") ([System.Drawing.Color]::DarkOrange)
         Write-Log (T "AgentMemoryNotInstalled")
         return
@@ -2980,7 +3074,7 @@ function Check-AgentMemoryUpdate {
 
         Set-ActionFeedback (T "Updating" @($latest)) ([System.Drawing.Color]::DarkOrange)
         Write-Log (T "Updating" @($latest))
-        $result = Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments "/d /c npm install -g @agentmemory/agentmemory@latest" -Wait -TimeoutSeconds 900
+        $result = Invoke-HiddenProcess -FilePath $script:ShellCmd -Arguments "$($script:ShellArgs) npm install -g @agentmemory/agentmemory@latest" -Wait -TimeoutSeconds 900
         $new = Get-AgentMemoryVersion
         if ($result.ExitCode -eq 0 -and (Compare-SemVer -A $new -B $current) -gt 0) {
             Update-Status
@@ -3001,7 +3095,14 @@ function Check-AgentMemoryUpdate {
 }
 
 function Copy-McpConfig {
-    [System.Windows.Forms.Clipboard]::SetText((Get-McpConfig))
+    if ($script:IsWindows) {
+        [System.Windows.Forms.Clipboard]::SetText((Get-McpConfig))
+    } else {
+        $json = Get-McpConfig
+        if (Get-Command pbcopy -ErrorAction SilentlyContinue) { $json | pbcopy }
+        elseif (Get-Command xclip -ErrorAction SilentlyContinue) { $json | xclip -selection clipboard }
+        else { Write-Log "Clipboard not available; config printed above" }
+    }
     Set-ActionFeedback (T "CopyOkBody") ([System.Drawing.Color]::DarkGreen)
     Write-Log (T "CopyOkBody")
     [System.Windows.Forms.MessageBox]::Show((T "CopyOkBody"), (T "CopyOkTitle"), "OK", "Information") | Out-Null
@@ -3017,7 +3118,7 @@ function Open-MemoryViewer {
     }
 
     $url = "http://localhost:$script:VIEWER_PORT"
-    Start-Process $url | Out-Null
+    if ($script:IsWindows) { Start-Process $url } elseif ($script:IsMacOS) { Start-Process "open" -ArgumentList $url } else { Start-Process "xdg-open" -ArgumentList $url }
     Write-Log "Viewer: $url"
     Set-ActionFeedback ("Viewer: $url") ([System.Drawing.Color]::DarkGreen)
 }
@@ -3035,7 +3136,7 @@ function Show-MemoryStatus {
     try {
         Set-ManagerEnv
         $cli = Get-AgentMemoryCliPath
-        $result = Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments ("/d /c `"`"" + $cli + "`" status`"") -Wait -TimeoutSeconds 60
+        $result = Invoke-HiddenProcess -FilePath $script:ShellCmd -Arguments ("$($script:ShellArgs) `"`"" + $cli + "`" status`"") -Wait -TimeoutSeconds 60
         $text = [string]$result.Output + "`n" + [string]$result.Error
         foreach ($line in ($text -split "`r?`n")) {
             # Drop the CLI's box-drawing / status glyphs so the log stays readable.
@@ -3068,7 +3169,7 @@ function Install-LocalEmbedding {
     Write-Log (T "InstallingLocalEmbedding")
     try {
         Set-ManagerEnv
-        $result = Invoke-HiddenProcess -FilePath "cmd.exe" -Arguments "/d /c npm install -g @xenova/transformers" -Wait -TimeoutSeconds 900
+        $result = Invoke-HiddenProcess -FilePath $script:ShellCmd -Arguments "$($script:ShellArgs) npm install -g @xenova/transformers" -Wait -TimeoutSeconds 900
         if ($result.ExitCode -eq 0 -and (Test-LocalEmbeddingReady)) {
             Set-ActionFeedback (T "LocalEmbeddingInstalled") ([System.Drawing.Color]::DarkGreen)
             Write-Log (T "LocalEmbeddingInstalled")
@@ -3283,7 +3384,14 @@ function Configure-AgentClients {
 }
 
 function Copy-CliCommands {
-    [System.Windows.Forms.Clipboard]::SetText((Get-CliConfigCommands))
+    if ($script:IsWindows) {
+        [System.Windows.Forms.Clipboard]::SetText((Get-CliConfigCommands))
+    } else {
+        $text = Get-CliConfigCommands
+        if (Get-Command pbcopy -ErrorAction SilentlyContinue) { $text | pbcopy }
+        elseif (Get-Command xclip -ErrorAction SilentlyContinue) { $text | xclip -selection clipboard }
+        else { Write-Log "Clipboard not available; commands printed above" }
+    }
     Set-ActionFeedback (T "CopyCliOkBody") ([System.Drawing.Color]::DarkGreen)
     Write-Log (T "CopyCliOkBody")
     [System.Windows.Forms.MessageBox]::Show((T "CopyCliOkBody"), (T "CopyOkTitle"), "OK", "Information") | Out-Null
@@ -3637,6 +3745,12 @@ function Update-ToolCardControls {
 # GUI mode. The packaged exe launches this script through a hidden window, so a
 # terminating error here would otherwise look like "nothing happens" on click.
 # Wrap the whole GUI bootstrap so any failure is logged and shown to the user.
+if (-not $script:IsWindows) {
+    Write-Host "GUI mode is only available on Windows. Use -Cli or -Tui instead."
+    Write-Host "Example: powershell -File AgentMemoryManager.ps1 -Cli env tools"
+    exit 1
+}
+
 try {
 
 $script:Form = New-Object System.Windows.Forms.Form

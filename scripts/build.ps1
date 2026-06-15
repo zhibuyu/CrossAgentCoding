@@ -4,6 +4,18 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Platform detection
+$isWindows = $PSVersionTable.PSVersion.Major -ge 6 -and $IsWindows -or ([Environment]::OSVersion.Platform -eq 'Win32NT')
+if ($PSVersionTable.PSVersion.Major -lt 6) { $isWindows = $true }
+
+if (-not $isWindows) {
+    Write-Host "WARNING: IExpress packaging is Windows-only. On macOS/Linux, run the source directly:"
+    Write-Host "  pwsh ./src/AgentMemoryManager.ps1"
+    Write-Host ""
+    Write-Host "To create a macOS .app bundle or Linux wrapper script, see docs/build-cross-platform.md"
+    exit 1
+}
+
 $root = Split-Path -Parent $PSScriptRoot
 $src = Join-Path $root "src"
 $stage = Join-Path $root "_manager_stage"

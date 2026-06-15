@@ -1,6 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.0.1-blue" alt="version">
-  <img src="https://img.shields.io/badge/platform-Windows%2010%2B-0078D6" alt="platform">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-0078D6" alt="platform">
+  <img src="https://img.shields.io/badge/arch-x64%20%7C%20ARM64-orange" alt="arch">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license">
   <img src="https://img.shields.io/badge/powershell-5.1%2B-5391FE" alt="powershell">
   <img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP">
@@ -40,14 +41,36 @@ You use multiple AI coding tools. Each tool has its own isolated memory. Switch 
 
 ## Quick Start
 
+### Windows (Pre-built EXE)
+
 1. **Download** `CrossAgnetCoding.exe` from [Releases](https://github.com/zhibuyu/CrossAgnetCoding/releases).
 2. Run it. Click **Install All** to set up Node.js, AgentMemory, and iii-engine.
 3. Click **Start Service** &mdash; wait for `Running (localhost:3111)`.
 4. Click **Configure All** to write MCP configs to every detected agent.
 5. Restart your coding tools. They now share memory.
 
+### macOS / Linux (Run from Source)
+
+```bash
+# Install PowerShell 7+ and Node.js first
+# macOS: brew install powershell node@20
+# Linux: sudo apt install powershell nodejs
+
+# Clone and run
+git clone https://github.com/zhibuyu/CrossAgnetCoding.git
+cd CrossAgnetCoding
+pwsh ./src/AgentMemoryManager.ps1
+
+# Or CLI mode
+pwsh ./src/AgentMemoryManager.ps1 -Cli env tools
+pwsh ./src/AgentMemoryManager.ps1 -Cli agents configure
+```
+
+> **Note:** On macOS/Linux, the GUI is not available &mdash; the app automatically runs in CLI/TUI mode. All core features (install, configure, bridge, memory settings) work via command line.
+
+### Run from Source (Windows)
+
 ```powershell
-# Or run from source (no build needed):
 powershell -NoProfile -ExecutionPolicy Bypass -File .\src\AgentMemoryManager.ps1
 ```
 
@@ -140,11 +163,27 @@ Built-in web viewer at `http://localhost:3113` for browsing and managing memorie
 
 ## Build
 
+### Windows (IExpress EXE)
+
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
 Uses Windows built-in IExpress. Output: `release\CrossAgnetCoding.exe`
+
+### macOS / Linux
+
+No build step needed &mdash; run directly from source. To create a wrapper script:
+
+```bash
+# Create a convenient launcher
+cat > crossagnetcoding << 'EOF'
+#!/bin/bash
+pwsh "$(dirname "$0")/src/AgentMemoryManager.ps1" "$@"
+EOF
+chmod +x crossagnetcoding
+./crossagnetcoding -Cli env tools
+```
 
 ## Test
 
@@ -190,7 +229,7 @@ CrossAgnetCoding/
 - [ ] Provider switching dashboard
 - [ ] Usage / cost analytics
 - [ ] WebDAV / cloud sync for memory backup
-- [ ] Linux & macOS support
+- [x] Linux & macOS support (CLI/TUI mode)
 
 ---
 
