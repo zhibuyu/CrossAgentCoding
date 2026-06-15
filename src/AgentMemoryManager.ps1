@@ -1127,13 +1127,22 @@ function Get-MemorySettings {
     }
 
     return [pscustomobject]@{
-        EmbeddingMode     = [string](Get-Prop $memory "embeddingMode" "keyword")   # keyword | local | cloud
-        EmbeddingProvider = [string](Get-Prop $memory "embeddingProvider" "openai") # openai|gemini|voyage|cohere|openrouter
-        EmbeddingApiKey   = [string](Get-Prop $memory "embeddingApiKey" "")
-        LlmProvider       = [string](Get-Prop $memory "llmProvider" "none")         # none|openai|minimax|anthropic|gemini|openrouter
-        LlmApiKey         = [string](Get-Prop $memory "llmApiKey" "")
-        Tools             = [string](Get-Prop $memory "tools" "core")               # core | all
-        UseHfMirror       = [bool](Get-Prop $memory "useHfMirror" $true)
+        EmbeddingMode       = [string](Get-Prop $memory "embeddingMode" "keyword")     # keyword | local | cloud
+        # Cloud embedding "format"/provider. "openai" means any OpenAI-compatible
+        # endpoint (set EmbeddingBaseUrl for a custom one).
+        EmbeddingFormat     = [string](Get-Prop $memory "embeddingFormat" ([string](Get-Prop $memory "embeddingProvider" "openai")))
+        EmbeddingBaseUrl    = [string](Get-Prop $memory "embeddingBaseUrl" "")
+        EmbeddingModel      = [string](Get-Prop $memory "embeddingModel" "")
+        EmbeddingDimensions = [string](Get-Prop $memory "embeddingDimensions" "")
+        EmbeddingApiKey     = [string](Get-Prop $memory "embeddingApiKey" "")
+        # LLM "format": none | openai (Chat Completions) | anthropic (Messages) |
+        # gemini | openrouter | minimax. openai/anthropic accept a custom Base URL.
+        LlmFormat           = [string](Get-Prop $memory "llmFormat" ([string](Get-Prop $memory "llmProvider" "none")))
+        LlmBaseUrl          = [string](Get-Prop $memory "llmBaseUrl" "")
+        LlmModel            = [string](Get-Prop $memory "llmModel" "")
+        LlmApiKey           = [string](Get-Prop $memory "llmApiKey" "")
+        Tools               = [string](Get-Prop $memory "tools" "core")               # core | all
+        UseHfMirror         = [bool](Get-Prop $memory "useHfMirror" $true)
     }
 }
 
@@ -1142,13 +1151,18 @@ function Save-MemorySettings {
 
     $settings = Read-CrossAgnetCodingSettings
     $obj = [ordered]@{
-        embeddingMode     = [string]$Memory.EmbeddingMode
-        embeddingProvider = [string]$Memory.EmbeddingProvider
-        embeddingApiKey   = [string]$Memory.EmbeddingApiKey
-        llmProvider       = [string]$Memory.LlmProvider
-        llmApiKey         = [string]$Memory.LlmApiKey
-        tools             = [string]$Memory.Tools
-        useHfMirror       = [bool]$Memory.UseHfMirror
+        embeddingMode       = [string]$Memory.EmbeddingMode
+        embeddingFormat     = [string]$Memory.EmbeddingFormat
+        embeddingBaseUrl    = [string]$Memory.EmbeddingBaseUrl
+        embeddingModel      = [string]$Memory.EmbeddingModel
+        embeddingDimensions = [string]$Memory.EmbeddingDimensions
+        embeddingApiKey     = [string]$Memory.EmbeddingApiKey
+        llmFormat           = [string]$Memory.LlmFormat
+        llmBaseUrl          = [string]$Memory.LlmBaseUrl
+        llmModel            = [string]$Memory.LlmModel
+        llmApiKey           = [string]$Memory.LlmApiKey
+        tools               = [string]$Memory.Tools
+        useHfMirror         = [bool]$Memory.UseHfMirror
     }
     $settings | Add-Member -NotePropertyName "memory" -NotePropertyValue ([pscustomobject]$obj) -Force
     return (Write-CrossAgnetCodingSettings -Settings $settings)
@@ -1176,19 +1190,29 @@ function Get-MemoryEnvMap {
     # and clear them when the user toggles options off.
     $m = Get-MemorySettings
     $map = [ordered]@{
-        EMBEDDING_PROVIDER = ""
-        OPENAI_API_KEY     = ""
-        GEMINI_API_KEY     = ""
-        ANTHROPIC_API_KEY  = ""
-        MINIMAX_API_KEY    = ""
-        OPENROUTER_API_KEY = ""
-        VOYAGE_API_KEY     = ""
-        COHERE_API_KEY     = ""
-        AGENTMEMORY_TOOLS  = ""
-        HF_ENDPOINT        = ""
-        TRANSFORMERS_CACHE = ""
-        HF_HOME            = ""
-        HF_HUB_CACHE       = ""
+        EMBEDDING_PROVIDER          = ""
+        OPENAI_API_KEY              = ""
+        OPENAI_BASE_URL             = ""
+        OPENAI_MODEL                = ""
+        OPENAI_EMBEDDING_MODEL      = ""
+        OPENAI_EMBEDDING_DIMENSIONS = ""
+        GEMINI_API_KEY              = ""
+        GEMINI_MODEL                = ""
+        ANTHROPIC_API_KEY           = ""
+        ANTHROPIC_BASE_URL          = ""
+        ANTHROPIC_MODEL             = ""
+        MINIMAX_API_KEY             = ""
+        MINIMAX_MODEL               = ""
+        OPENROUTER_API_KEY          = ""
+        OPENROUTER_MODEL            = ""
+        OPENROUTER_EMBEDDING_MODEL  = ""
+        VOYAGE_API_KEY              = ""
+        COHERE_API_KEY              = ""
+        AGENTMEMORY_TOOLS           = ""
+        HF_ENDPOINT                 = ""
+        TRANSFORMERS_CACHE          = ""
+        HF_HOME                     = ""
+        HF_HUB_CACHE                = ""
     }
 
     # Local embedding model download location (relocatable storage). Several env
@@ -1205,19 +1229,41 @@ function Get-MemoryEnvMap {
             $map["HF_ENDPOINT"] = $script:HF_MIRROR_URL
         }
     } elseif ($m.EmbeddingMode -eq "cloud") {
-        $map["EMBEDDING_PROVIDER"] = $m.EmbeddingProvider
-        $keyName = Get-ProviderKeyEnvName -Provider $m.EmbeddingProvider
+        $map["EMBEDDING_PROVIDER"] = $m.EmbeddingFormat
+        $keyName = Get-ProviderKeyEnvName -Provider $m.EmbeddingFormat
         if ($keyName -and -not [string]::IsNullOrWhiteSpace($m.EmbeddingApiKey)) {
             $map[$keyName] = $m.EmbeddingApiKey
+        }
+        if ($m.EmbeddingFormat -eq "openai") {
+            # OpenAI-compatible embeddings (custom endpoint, e.g. SiliconFlow / vLLM).
+            if (-not [string]::IsNullOrWhiteSpace($m.EmbeddingBaseUrl)) { $map["OPENAI_BASE_URL"] = $m.EmbeddingBaseUrl }
+            if (-not [string]::IsNullOrWhiteSpace($m.EmbeddingModel)) { $map["OPENAI_EMBEDDING_MODEL"] = $m.EmbeddingModel }
+            if (-not [string]::IsNullOrWhiteSpace($m.EmbeddingDimensions)) { $map["OPENAI_EMBEDDING_DIMENSIONS"] = $m.EmbeddingDimensions }
+        } elseif ($m.EmbeddingFormat -eq "openrouter") {
+            if (-not [string]::IsNullOrWhiteSpace($m.EmbeddingModel)) { $map["OPENROUTER_EMBEDDING_MODEL"] = $m.EmbeddingModel }
         }
     }
     # keyword mode leaves EMBEDDING_PROVIDER empty so AgentMemory stays BM25-only.
 
-    # LLM provider for compression / summarization / graph features.
-    if ($m.LlmProvider -and $m.LlmProvider -ne "none") {
-        $keyName = Get-ProviderKeyEnvName -Provider $m.LlmProvider
+    # LLM provider for compression / summarization / graph features, with custom
+    # base URL + model for the two API formats the user can target.
+    if ($m.LlmFormat -and $m.LlmFormat -ne "none") {
+        $keyName = Get-ProviderKeyEnvName -Provider $m.LlmFormat
         if ($keyName -and -not [string]::IsNullOrWhiteSpace($m.LlmApiKey)) {
             $map[$keyName] = $m.LlmApiKey
+        }
+        switch ($m.LlmFormat) {
+            "openai" {
+                if (-not [string]::IsNullOrWhiteSpace($m.LlmBaseUrl)) { $map["OPENAI_BASE_URL"] = $m.LlmBaseUrl }
+                if (-not [string]::IsNullOrWhiteSpace($m.LlmModel)) { $map["OPENAI_MODEL"] = $m.LlmModel }
+            }
+            "anthropic" {
+                if (-not [string]::IsNullOrWhiteSpace($m.LlmBaseUrl)) { $map["ANTHROPIC_BASE_URL"] = $m.LlmBaseUrl }
+                if (-not [string]::IsNullOrWhiteSpace($m.LlmModel)) { $map["ANTHROPIC_MODEL"] = $m.LlmModel }
+            }
+            "gemini"     { if (-not [string]::IsNullOrWhiteSpace($m.LlmModel)) { $map["GEMINI_MODEL"] = $m.LlmModel } }
+            "openrouter" { if (-not [string]::IsNullOrWhiteSpace($m.LlmModel)) { $map["OPENROUTER_MODEL"] = $m.LlmModel } }
+            "minimax"    { if (-not [string]::IsNullOrWhiteSpace($m.LlmModel)) { $map["MINIMAX_MODEL"] = $m.LlmModel } }
         }
     }
 
@@ -1862,9 +1908,14 @@ function Invoke-CliMode {
     } elseif ($command -eq "memory show") {
         $m = Get-MemorySettings
         Write-Output "embeddingMode: $($m.EmbeddingMode)"
-        Write-Output "embeddingProvider: $($m.EmbeddingProvider)"
+        Write-Output "embeddingFormat: $($m.EmbeddingFormat)"
+        Write-Output "embeddingBaseUrl: $($m.EmbeddingBaseUrl)"
+        Write-Output "embeddingModel: $($m.EmbeddingModel)"
+        Write-Output "embeddingDimensions: $($m.EmbeddingDimensions)"
         Write-Output "embeddingApiKey: $(if ($m.EmbeddingApiKey) { '***set***' } else { '(empty)' })"
-        Write-Output "llmProvider: $($m.LlmProvider)"
+        Write-Output "llmFormat: $($m.LlmFormat)"
+        Write-Output "llmBaseUrl: $($m.LlmBaseUrl)"
+        Write-Output "llmModel: $($m.LlmModel)"
         Write-Output "llmApiKey: $(if ($m.LlmApiKey) { '***set***' } else { '(empty)' })"
         Write-Output "tools: $($m.Tools)"
         Write-Output "useHfMirror: $($m.UseHfMirror)"
@@ -2699,12 +2750,13 @@ function Show-MemorySettingsDialog {
 
     $dlg = New-Object System.Windows.Forms.Form
     $dlg.Text = T "MemorySettings"
-    $dlg.Size = New-Object System.Drawing.Size(560, 524)
+    $dlg.Size = New-Object System.Drawing.Size(600, 648)
     $dlg.StartPosition = "CenterParent"
     $dlg.FormBorderStyle = "FixedDialog"
     $dlg.MaximizeBox = $false
     $dlg.MinimizeBox = $false
     $dlg.BackColor = [System.Drawing.Color]::White
+    $dlg.AutoScroll = $true
 
     $addLabel = {
         param([string]$Text, [int]$X, [int]$Y, [int]$W, [int]$H = 22, [bool]$Bold = $false, [bool]$Gray = $false)
@@ -2740,35 +2792,43 @@ function Show-MemorySettingsDialog {
 
     # Value arrays parallel to the localized combo items.
     $modeValues = @("keyword", "local", "cloud")
-    $embProviderValues = @("openai", "gemini", "voyage", "cohere", "openrouter")
-    $llmValues = @("none", "openai", "minimax", "anthropic", "gemini", "openrouter")
+    $embFormatValues = @("openai", "gemini", "voyage", "cohere", "openrouter")
+    $llmFormatValues = @("none", "openai", "anthropic", "gemini", "openrouter", "minimax")
     $toolValues = @("core", "all")
 
     # Section 1: embedding / semantic search
-    [void](& $addLabel ($(if ($isEn) { "1. Semantic search (vectors)" } else { "① 语义检索（向量）" })) 20 16 500 22 $true)
-    [void](& $addLabel ($(if ($isEn) { "Search mode" } else { "检索方式" })) 20 48 150)
-    $cmbMode = & $addCombo @($(if ($isEn) { @("Keyword only (BM25)", "Local MiniLM (offline)", "Cloud API (needs key)") } else { @("纯关键词 BM25（零配置）", "本地 MiniLM（离线语义）", "云端 API（需 Key）") })) 180 46 330
+    [void](& $addLabel ($(if ($isEn) { "1. Semantic search (vectors)" } else { "① 语义检索（向量）" })) 20 14 540 22 $true)
+    [void](& $addLabel ($(if ($isEn) { "Search mode" } else { "检索方式" })) 20 46 150)
+    $cmbMode = & $addCombo @($(if ($isEn) { @("Keyword only (BM25)", "Local MiniLM (offline)", "Cloud API (custom)") } else { @("纯关键词 BM25（零配置）", "本地 MiniLM（离线语义）", "云端 API（自定义接入）") })) 180 44 388
 
-    [void](& $addLabel ($(if ($isEn) { "Cloud provider" } else { "云端提供方" })) 20 82 150)
-    $cmbEmbProvider = & $addCombo @("OpenAI", "Gemini", "Voyage", "Cohere", "OpenRouter") 180 80 200
+    [void](& $addLabel ($(if ($isEn) { "Cloud format" } else { "云端格式" })) 20 80 150)
+    $cmbEmbFormat = & $addCombo @($(if ($isEn) { @("OpenAI-compatible", "Gemini", "Voyage", "Cohere", "OpenRouter") } else { @("OpenAI 兼容", "Gemini", "Voyage", "Cohere", "OpenRouter") })) 180 78 200
 
-    [void](& $addLabel ($(if ($isEn) { "Embedding key" } else { "Embedding Key" })) 20 116 150)
-    $txtEmbKey = & $addText 180 114 330 $m.EmbeddingApiKey
+    [void](& $addLabel ($(if ($isEn) { "Base URL" } else { "端点地址" })) 20 114 150)
+    $txtEmbBaseUrl = & $addText 180 112 388 $m.EmbeddingBaseUrl
+
+    [void](& $addLabel ($(if ($isEn) { "Embedding model" } else { "Embedding 模型" })) 20 148 150)
+    $txtEmbModel = & $addText 180 146 228 $m.EmbeddingModel
+    [void](& $addLabel ($(if ($isEn) { "Dim" } else { "维度" })) 416 148 40)
+    $txtEmbDims = & $addText 458 146 110 $m.EmbeddingDimensions
+
+    [void](& $addLabel ($(if ($isEn) { "Embedding key" } else { "Embedding Key" })) 20 182 150)
+    $txtEmbKey = & $addText 180 180 388 $m.EmbeddingApiKey
 
     $chkHfMirror = New-Object System.Windows.Forms.CheckBox
     $chkHfMirror.Text = $(if ($isEn) { "Download local model via hf-mirror.com" } else { "本地模型走 hf-mirror.com 镜像下载（国内更快）" })
-    $chkHfMirror.Location = New-Object System.Drawing.Point(180, 148)
-    $chkHfMirror.Size = New-Object System.Drawing.Size(340, 22)
+    $chkHfMirror.Location = New-Object System.Drawing.Point(180, 212)
+    $chkHfMirror.Size = New-Object System.Drawing.Size(388, 22)
     $chkHfMirror.Checked = $m.UseHfMirror
     $dlg.Controls.Add($chkHfMirror)
 
     $btnInstallLocal = New-Object System.Windows.Forms.Button
     $btnInstallLocal.Text = $(if ($isEn) { "Install local deps" } else { "安装本地向量依赖" })
-    $btnInstallLocal.Location = New-Object System.Drawing.Point(180, 176)
+    $btnInstallLocal.Location = New-Object System.Drawing.Point(180, 238)
     $btnInstallLocal.Size = New-Object System.Drawing.Size(150, 28)
     $btnInstallLocal.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $dlg.Controls.Add($btnInstallLocal)
-    $lblLocalStatus = & $addLabel "" 340 180 180 22 $false $true
+    $lblLocalStatus = & $addLabel "" 340 242 180 22 $false $true
 
     $refreshLocalStatus = {
         if (Test-LocalEmbeddingReady) {
@@ -2782,29 +2842,33 @@ function Show-MemorySettingsDialog {
     & $refreshLocalStatus
     $btnInstallLocal.Add_Click({ [void](Install-LocalEmbedding); & $refreshLocalStatus })
 
-    # Section 2: LLM provider (optional)
-    [void](& $addLabel ($(if ($isEn) { "2. LLM smart compression (optional)" } else { "② LLM 智能压缩（可选）" })) 20 220 500 22 $true)
-    [void](& $addLabel ($(if ($isEn) { "LLM provider" } else { "LLM 提供方" })) 20 252 150)
-    $cmbLlm = & $addCombo @($(if ($isEn) { @("None", "OpenAI", "MiniMax", "Anthropic", "Gemini", "OpenRouter") } else { @("不使用", "OpenAI", "MiniMax", "Anthropic", "Gemini", "OpenRouter") })) 180 250 200
-    [void](& $addLabel "LLM Key" 20 286 150)
-    $txtLlmKey = & $addText 180 284 330 $m.LlmApiKey
+    # Section 2: LLM provider (optional), with custom OpenAI/Anthropic endpoint
+    [void](& $addLabel ($(if ($isEn) { "2. LLM smart compression (optional)" } else { "② LLM 智能压缩（可选）" })) 20 280 540 22 $true)
+    [void](& $addLabel ($(if ($isEn) { "API format" } else { "API 格式" })) 20 312 150)
+    $cmbLlmFormat = & $addCombo @($(if ($isEn) { @("None", "OpenAI Chat Completions", "Anthropic Messages", "Gemini", "OpenRouter", "MiniMax") } else { @("不使用", "OpenAI Chat Completions", "Anthropic Messages", "Gemini", "OpenRouter", "MiniMax") })) 180 310 260
+    [void](& $addLabel ($(if ($isEn) { "Base URL" } else { "端点地址" })) 20 346 150)
+    $txtLlmBaseUrl = & $addText 180 344 388 $m.LlmBaseUrl
+    [void](& $addLabel ($(if ($isEn) { "Model ID" } else { "模型 ID" })) 20 380 150)
+    $txtLlmModel = & $addText 180 378 388 $m.LlmModel
+    [void](& $addLabel "LLM Key" 20 414 150)
+    $txtLlmKey = & $addText 180 412 388 $m.LlmApiKey
 
     # Section 3: MCP tool surface
-    [void](& $addLabel ($(if ($isEn) { "3. MCP tool surface" } else { "③ MCP 工具集" })) 20 322 500 22 $true)
-    [void](& $addLabel ($(if ($isEn) { "Tools exposed" } else { "暴露给工具的工具集" })) 20 354 150)
-    $cmbTools = & $addCombo @($(if ($isEn) { @("core (7 tools, default)", "all (51 tools)") } else { @("core（7 个工具，默认）", "all（51 个工具）") })) 180 352 250
+    [void](& $addLabel ($(if ($isEn) { "3. MCP tool surface" } else { "③ MCP 工具集" })) 20 452 540 22 $true)
+    [void](& $addLabel ($(if ($isEn) { "Tools exposed" } else { "暴露给工具的工具集" })) 20 484 150)
+    $cmbTools = & $addCombo @($(if ($isEn) { @("core (7 tools, default)", "all (51 tools)") } else { @("core（7 个工具，默认）", "all（51 个工具）") })) 180 482 260
 
-    [void](& $addLabel ($(if ($isEn) { "Settings are saved locally and applied to AgentMemory after you restart the service. Keys stay on this machine." } else { "说明：以上设置保存在本机，启动/重启服务后对 AgentMemory 生效；Key 仅保存在本地 settings.json。" })) 20 388 500 40 $false $true)
+    [void](& $addLabel ($(if ($isEn) { "Base URL / model are optional (empty = provider default). OpenAI-compatible accepts SiliconFlow / vLLM / Ollama-style endpoints. Saved locally; applied after a service restart." } else { "端点地址/模型可留空（＝用官方默认）；OpenAI 兼容可填 SiliconFlow / vLLM / Ollama 等。设置保存在本机，重启服务后生效；Key 仅存本地。" })) 20 516 552 44 $false $true)
 
     # Initial selections
     $cmbMode.SelectedIndex = [Math]::Max(0, [Array]::IndexOf($modeValues, $m.EmbeddingMode))
-    $cmbEmbProvider.SelectedIndex = [Math]::Max(0, [Array]::IndexOf($embProviderValues, $m.EmbeddingProvider))
-    $cmbLlm.SelectedIndex = [Math]::Max(0, [Array]::IndexOf($llmValues, $m.LlmProvider))
+    $cmbEmbFormat.SelectedIndex = [Math]::Max(0, [Array]::IndexOf($embFormatValues, $m.EmbeddingFormat))
+    $cmbLlmFormat.SelectedIndex = [Math]::Max(0, [Array]::IndexOf($llmFormatValues, $m.LlmFormat))
     $cmbTools.SelectedIndex = [Math]::Max(0, [Array]::IndexOf($toolValues, $m.Tools))
 
     $btnCancel = New-Object System.Windows.Forms.Button
     $btnCancel.Text = $(if ($isEn) { "Cancel" } else { "取消" })
-    $btnCancel.Location = New-Object System.Drawing.Point(330, 442)
+    $btnCancel.Location = New-Object System.Drawing.Point(370, 566)
     $btnCancel.Size = New-Object System.Drawing.Size(90, 30)
     $btnCancel.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $btnCancel.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
@@ -2812,7 +2876,7 @@ function Show-MemorySettingsDialog {
 
     $btnSave = New-Object System.Windows.Forms.Button
     $btnSave.Text = $(if ($isEn) { "Save" } else { "保存" })
-    $btnSave.Location = New-Object System.Drawing.Point(428, 442)
+    $btnSave.Location = New-Object System.Drawing.Point(468, 566)
     $btnSave.Size = New-Object System.Drawing.Size(90, 30)
     $btnSave.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $btnSave.BackColor = [System.Drawing.Color]::FromArgb(24, 144, 255)
@@ -2823,13 +2887,18 @@ function Show-MemorySettingsDialog {
 
     $btnSave.Add_Click({
         $saved = [pscustomobject]@{
-            EmbeddingMode     = $modeValues[$cmbMode.SelectedIndex]
-            EmbeddingProvider = $embProviderValues[$cmbEmbProvider.SelectedIndex]
-            EmbeddingApiKey   = $txtEmbKey.Text.Trim()
-            LlmProvider       = $llmValues[$cmbLlm.SelectedIndex]
-            LlmApiKey         = $txtLlmKey.Text.Trim()
-            Tools             = $toolValues[$cmbTools.SelectedIndex]
-            UseHfMirror       = [bool]$chkHfMirror.Checked
+            EmbeddingMode       = $modeValues[$cmbMode.SelectedIndex]
+            EmbeddingFormat     = $embFormatValues[$cmbEmbFormat.SelectedIndex]
+            EmbeddingBaseUrl    = $txtEmbBaseUrl.Text.Trim()
+            EmbeddingModel      = $txtEmbModel.Text.Trim()
+            EmbeddingDimensions = $txtEmbDims.Text.Trim()
+            EmbeddingApiKey     = $txtEmbKey.Text.Trim()
+            LlmFormat           = $llmFormatValues[$cmbLlmFormat.SelectedIndex]
+            LlmBaseUrl          = $txtLlmBaseUrl.Text.Trim()
+            LlmModel            = $txtLlmModel.Text.Trim()
+            LlmApiKey           = $txtLlmKey.Text.Trim()
+            Tools               = $toolValues[$cmbTools.SelectedIndex]
+            UseHfMirror         = [bool]$chkHfMirror.Checked
         }
         [void](Save-MemorySettings -Memory $saved)
         $dlg.DialogResult = [System.Windows.Forms.DialogResult]::OK
@@ -2976,7 +3045,7 @@ function Migrate-StorageLocationFromUi {
 function Show-StorageSettingsDialog {
     $dlg = New-Object System.Windows.Forms.Form
     $dlg.Text = T "StorageTitle"
-    $dlg.Size = New-Object System.Drawing.Size(680, 348)
+    $dlg.Size = New-Object System.Drawing.Size(680, 416)
     $dlg.StartPosition = "CenterParent"
     $dlg.FormBorderStyle = "FixedDialog"
     $dlg.MaximizeBox = $false
