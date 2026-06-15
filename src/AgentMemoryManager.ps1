@@ -2240,9 +2240,6 @@ function Set-Busy {
 
 function Apply-Language {
     $script:Form.Text = T "WindowTitle"
-    $script:TitleLabel.Text = T "SettingsTitle"
-    $script:AboutHeadingLabel.Text = T "AICodeToolAbout"
-    $script:AboutDescriptionLabel.Text = T "AboutDescription"
     $script:ProductNameLabel.Text = "CrossAgnetCoding"
     $script:ProductVersionLabel.Text = "Version $script:APP_VERSION"
     $script:LocalEnvLabel.Text = T "LocalEnvCheck"
@@ -3224,7 +3221,7 @@ function Update-ToolCardControls {
 try {
 
 $script:Form = New-Object System.Windows.Forms.Form
-$script:Form.Size = New-Object System.Drawing.Size(1180, 852)
+$script:Form.Size = New-Object System.Drawing.Size(1180, 796)
 $script:Form.StartPosition = "CenterScreen"
 $script:Form.FormBorderStyle = "FixedSingle"
 $script:Form.MaximizeBox = $false
@@ -3236,11 +3233,13 @@ $script:HeaderPanel.Location = New-Object System.Drawing.Point(0, 0)
 $script:HeaderPanel.BackColor = [System.Drawing.Color]::White
 $script:Form.Controls.Add($script:HeaderPanel)
 
-$script:TitleLabel = New-Object System.Windows.Forms.Label
-$script:TitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
-$script:TitleLabel.Size = New-Object System.Drawing.Size(400, 36)
-$script:TitleLabel.Location = New-Object System.Drawing.Point(24, 14)
-$script:HeaderPanel.Controls.Add($script:TitleLabel)
+# Product name on the left of the header (replaces the removed "设置/关于" labels).
+$script:HeaderTitleLabel = New-Object System.Windows.Forms.Label
+$script:HeaderTitleLabel.Text = "CrossAgnetCoding"
+$script:HeaderTitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
+$script:HeaderTitleLabel.Size = New-Object System.Drawing.Size(400, 36)
+$script:HeaderTitleLabel.Location = New-Object System.Drawing.Point(24, 12)
+$script:HeaderPanel.Controls.Add($script:HeaderTitleLabel)
 
 $script:LanguageBox = New-Object System.Windows.Forms.ComboBox
 $script:LanguageBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
@@ -3255,16 +3254,9 @@ $script:HeaderPanel.Controls.Add($script:LanguageBox)
 # unfinished General/Route/Auth/Advanced/Usage tabs are no longer rendered.
 $script:NavButtons = $null
 
-$script:AboutHeadingLabel = New-CardLabel -Text "" -X 24 -Y 72 -Width 300 -Height 24 -Size 10.5 -Style ([System.Drawing.FontStyle]::Bold)
-$script:Form.Controls.Add($script:AboutHeadingLabel)
-
-$script:AboutDescriptionLabel = New-CardLabel -Text "" -X 24 -Y 98 -Width 720 -Height 22 -Size 8.5
-$script:AboutDescriptionLabel.ForeColor = [System.Drawing.Color]::FromArgb(107, 114, 128)
-$script:Form.Controls.Add($script:AboutDescriptionLabel)
-
 $script:AboutPanel = New-Object System.Windows.Forms.Panel
 $script:AboutPanel.Size = New-Object System.Drawing.Size(1132, 124)
-$script:AboutPanel.Location = New-Object System.Drawing.Point(24, 126)
+$script:AboutPanel.Location = New-Object System.Drawing.Point(24, 70)
 $script:AboutPanel.BackColor = [System.Drawing.Color]::White
 $script:AboutPanel.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 $script:Form.Controls.Add($script:AboutPanel)
@@ -3336,22 +3328,22 @@ $script:AboutPanel.Controls.Add($script:BtnMigrateHome)
 
 # Shows the current data directory, service log path, and live service ports so
 # the user knows exactly where data lives before deciding whether to migrate it.
-$script:DataPathLabel = New-CardLabel -Text "" -X 26 -Y 258 -Width 1106 -Height 36 -Size 8.5
+$script:DataPathLabel = New-CardLabel -Text "" -X 26 -Y 202 -Width 1106 -Height 36 -Size 8.5
 $script:DataPathLabel.ForeColor = [System.Drawing.Color]::FromArgb(107, 114, 128)
 $script:Form.Controls.Add($script:DataPathLabel)
 
-$script:LocalEnvLabel = New-CardLabel -Text "" -X 24 -Y 302 -Width 300 -Height 26 -Size 10.5 -Style ([System.Drawing.FontStyle]::Bold)
+$script:LocalEnvLabel = New-CardLabel -Text "" -X 24 -Y 246 -Width 300 -Height 26 -Size 10.5 -Style ([System.Drawing.FontStyle]::Bold)
 $script:Form.Controls.Add($script:LocalEnvLabel)
 
-$script:BtnScanAgents = New-FlatButton -Text "" -X 948 -Y 298 -Width 92 -Height 28
+$script:BtnScanAgents = New-FlatButton -Text "" -X 948 -Y 242 -Width 92 -Height 28
 $script:Form.Controls.Add($script:BtnScanAgents)
 
-$script:BtnConfigureAgents = New-FlatButton -Text "" -X 1044 -Y 298 -Width 104 -Height 28 -Primary
+$script:BtnConfigureAgents = New-FlatButton -Text "" -X 1044 -Y 242 -Width 104 -Height 28 -Primary
 $script:Form.Controls.Add($script:BtnConfigureAgents)
 
 $script:ToolCardsPanel = New-Object System.Windows.Forms.Panel
 $script:ToolCardsPanel.Size = New-Object System.Drawing.Size(1132, 300)
-$script:ToolCardsPanel.Location = New-Object System.Drawing.Point(24, 332)
+$script:ToolCardsPanel.Location = New-Object System.Drawing.Point(24, 276)
 $script:ToolCardsPanel.BackColor = [System.Drawing.Color]::FromArgb(250, 250, 250)
 $script:ToolCardsPanel.AutoScroll = $true
 $script:Form.Controls.Add($script:ToolCardsPanel)
@@ -3371,7 +3363,7 @@ for ($i = 0; $i -lt $initialCards.Count; $i++) {
 
 $script:ActionGroup = New-Object System.Windows.Forms.GroupBox
 $script:ActionGroup.Size = New-Object System.Drawing.Size(548, 150)
-$script:ActionGroup.Location = New-Object System.Drawing.Point(24, 644)
+$script:ActionGroup.Location = New-Object System.Drawing.Point(24, 588)
 $script:Form.Controls.Add($script:ActionGroup)
 
 $script:ActionLabel = New-Object System.Windows.Forms.Label
@@ -3382,7 +3374,7 @@ $script:ActionGroup.Controls.Add($script:ActionLabel)
 
 $script:LogGroup = New-Object System.Windows.Forms.GroupBox
 $script:LogGroup.Size = New-Object System.Drawing.Size(572, 150)
-$script:LogGroup.Location = New-Object System.Drawing.Point(584, 644)
+$script:LogGroup.Location = New-Object System.Drawing.Point(584, 588)
 $script:Form.Controls.Add($script:LogGroup)
 
 $script:LogBox = New-Object System.Windows.Forms.TextBox
