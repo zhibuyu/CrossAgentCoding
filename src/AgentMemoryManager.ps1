@@ -550,15 +550,48 @@ function T {
 function Set-ManagerEnv {
     $env:HOME = $script:HomeDir
 
-    $parts = @(
+    # Collect existing PATH entries, split by path separator
+    $existing = @()
+    if ($env:Path) {
+        $existing = $env:Path -split [regex]::Escape($script:PathSep) | Where-Object { $_ -and $_.Trim().Length -gt 0 }
+    }
+
+    # New entries to prepend (without duplicates already in PATH)
+    $newEntries = @(
         (Join-Path $script:AM_DIR "bin"),
         $script:LOCAL_BIN,
         $(if ($script:IsWindows) { "${env:ProgramFiles}\nodejs" } else { "/usr/local/bin" }),
-        $script:NPM_GLOBAL,
-        $env:Path
+        $script:NPM_GLOBAL
     )
 
-    $env:Path = ($parts | Where-Object { $_ -and $_.Trim().Length -gt 0 }) -join $script:PathSep
+    # Deduplicate: only prepend entries not already present
+    $existingSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($e in $existing) { [void]$existingSet.Add($e.TrimEnd('\')) }
+
+    $toPrepend = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in $newEntries) {
+        if ($entry -and $entry.Trim().Length -gt 0) {
+            $normalized = $entry.TrimEnd('\')
+            if (-not $existingSet.Contains($normalized)) {
+                $toPrepend.Add($entry)
+                [void]$existingSet.Add($normalized)
+            }
+        }
+    }
+
+    # Build final PATH, checking length to avoid "环境变量名或值太长" error
+    $finalParts = $toPrepend + $existing
+    $maxPathLength = 32767  # Windows PATH limit
+    $result = ""
+    foreach ($part in $finalParts) {
+        $test = if ($result) { "$result$($script:PathSep)$part" } else { $part }
+        if ($test.Length -gt $maxPathLength) {
+            break  # Stop adding entries once we approach the limit
+        }
+        $result = $test
+    }
+
+    $env:Path = $result
 }
 
 function Get-NodeVersionFromFile {
@@ -2903,6 +2936,10 @@ function Install-All {
                     Invoke-WebRequest -Uri "https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi" -OutFile $msi -UseBasicParsing
                     Invoke-HiddenProcess -FilePath "msiexec.exe" -Arguments "/i `"$msi`" /quiet /norestart" -Wait -TimeoutSeconds 900
                     $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+                    # Clear version cache so Update-Status reflects the new installation immediately
+                    $script:NodeVersionCache = ""
+                    $script:NodeVersionCacheTime = [datetime]::MinValue
+                    $script:NodeVersionFailureTime = [datetime]::MinValue
                     Write-Log (T "InstallOk" @("Node.js"))
                 } catch {
                     Write-Log (T "InstallFail" @("Node.js", $_.Exception.Message))
@@ -2915,6 +2952,8 @@ function Install-All {
                 Write-Log "e.g. sudo apt install nodejs  or  sudo dnf install nodejs"
             }
         }
+        Update-Status
+        [System.Windows.Forms.Application]::DoEvents()
 
         $agentMemoryCmd = Join-Path $script:NPM_GLOBAL "agentmemory$($script:CmdExt)"
         if (Test-Path -LiteralPath $agentMemoryCmd) {
@@ -2935,6 +2974,8 @@ function Install-All {
                 Write-Log (T "InstallFail" @("AgentMemory", $_.Exception.Message))
             }
         }
+        Update-Status
+        [System.Windows.Forms.Application]::DoEvents()
 
         $iiiInAgentMemory = [System.IO.Path]::Combine($script:AM_DIR, "bin", "iii$($script:ExeExt)")
         $iiiInLocal = [System.IO.Path]::Combine($script:LOCAL_BIN, "iii$($script:ExeExt)")
@@ -2997,6 +3038,8 @@ function Install-All {
                 Write-Log (T "InstallFail" @("iii-engine", $_.Exception.Message))
             }
         }
+        Update-Status
+        [System.Windows.Forms.Application]::DoEvents()
 
         Write-Log (T "InstallDone")
         Set-ActionFeedback (T "InstallDone") ([System.Drawing.Color]::DarkGreen)
@@ -3905,6 +3948,46 @@ $script:Form.StartPosition = "CenterScreen"
 $script:Form.FormBorderStyle = "FixedSingle"
 $script:Form.MaximizeBox = $false
 $script:Form.BackColor = [System.Drawing.Color]::FromArgb(250, 250, 250)
+
+# Set application icon from icon/icon.ico (relative to script location)
+# Form.Icon only sets the title-bar icon; we also need to force the taskbar icon
+# via WM_SETICON because the host process is powershell.exe.
+try {
+    $iconCandidates = @(
+        (Join-Path $PSScriptRoot "..\icon\icon.ico"),
+        (Join-Path $PSScriptRoot "icon.ico")
+    )
+    $appIcon = $null
+    foreach ($iconPath in $iconCandidates) {
+        if (Test-Path -LiteralPath $iconPath) {
+            $appIcon = New-Object System.Drawing.Icon($iconPath)
+            break
+        }
+    }
+    if ($appIcon) {
+        $script:Form.Icon = $appIcon
+        # Force the taskbar icon via Win32 SendMessage(WM_SETICON, ICON_BIG)
+        $script:Form.Add_Shown({
+            $code = @'
+using System;
+using System.Runtime.InteropServices;
+public class TaskbarIcon {
+    [DllImport("user32.dll")]
+    public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+    public const uint WM_SETICON = 0x0080;
+    public const IntPtr ICON_SMALL = IntPtr.Zero;
+    public static readonly IntPtr ICON_BIG = (IntPtr)1;
+}
+'@
+            try {
+                Add-Type -TypeDefinition $code -ErrorAction Stop
+                $handle = $appIcon.Handle
+                [TaskbarIcon]::SendMessage($script:Form.Handle, [TaskbarIcon]::WM_SETICON, [TaskbarIcon]::ICON_BIG, $handle)
+                [TaskbarIcon]::SendMessage($script:Form.Handle, [TaskbarIcon]::WM_SETICON, [TaskbarIcon]::ICON_SMALL, $handle)
+            } catch {}
+        })
+    }
+} catch {}
 
 $script:HeaderPanel = New-Object System.Windows.Forms.Panel
 $script:HeaderPanel.Size = New-Object System.Drawing.Size(1164, 60)
