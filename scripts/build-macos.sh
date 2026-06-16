@@ -32,11 +32,11 @@ echo ""
 echo "[1/6] Checking prerequisites..."
 
 if ! command -v pwsh &>/dev/null; then
-    echo "ERROR: PowerShell (pwsh) is not installed."
-    echo "  Install: brew install powershell"
-    exit 1
+    echo "  ⚠ WARNING: PowerShell (pwsh) is not installed (runtime dependency)."
+    echo "    Users will need: brew install powershell"
+else
+    echo "  ✓ pwsh $(pwsh --version 2>/dev/null || echo '(found)')"
 fi
-echo "  ✓ pwsh $(pwsh -Version)"
 
 if ! command -v node &>/dev/null; then
     echo "WARNING: Node.js not installed (needed at runtime)."
@@ -115,12 +115,29 @@ echo "  ✓ Info.plist"
 echo ""
 echo "[5/6] Generating icon..."
 
-python3 -c "
+ICON_SRC="$ROOT/icon/_preview.png"
+
+if command -v sips &>/dev/null && command -v iconutil &>/dev/null && [ -f "$ICON_SRC" ]; then
+    ICONSET_DIR="$BUILD_DIR/AppIcon.iconset"
+    mkdir -p "$ICONSET_DIR"
+    for SIZE in 16 32 128 256 512; do
+        sips -z $SIZE $SIZE "$ICON_SRC" --out "$ICONSET_DIR/icon_${SIZE}x${SIZE}.png" >/dev/null 2>&1
+        DOUBLE=$((SIZE * 2))
+        sips -z $DOUBLE $DOUBLE "$ICON_SRC" --out "$ICONSET_DIR/icon_${SIZE}x${SIZE}@2x.png" >/dev/null 2>&1
+    done
+    iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/AppIcon.icns" 2>/dev/null
+    rm -rf "$ICONSET_DIR"
+    echo "  ✓ AppIcon.icns (from icon/_preview.png)"
+elif [ -f "$ICON_SRC" ]; then
+    cp "$ICON_SRC" "$RESOURCES_DIR/AppIcon.png"
+    echo "  ✓ AppIcon.png (from icon/_preview.png, no iconutil)"
+else
+    python3 -c "
 import struct, zlib, os
 def chunk(t, d):
     c = t + d
     return struct.pack('>I', len(d)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
-w, h = 1024, 1024
+w, h = 256, 256
 raw = b''
 for y in range(h):
     raw += b'\x00'
@@ -140,8 +157,9 @@ png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 
 os.makedirs('$RESOURCES_DIR', exist_ok=True)
 with open('$RESOURCES_DIR/AppIcon.png', 'wb') as f:
     f.write(png)
-print('  ✓ AppIcon.png')
+print('  ✓ AppIcon.png (placeholder)')
 " 2>/dev/null || echo "  ⚠ Icon skipped (no python3)"
+fi
 
 # --- Create DMG ---
 echo ""

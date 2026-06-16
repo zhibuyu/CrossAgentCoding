@@ -45,7 +45,11 @@ if ($script:IsWindows) {
     $script:ShellArgs = "/d /c"
 } else {
     $script:HomeDir = $env:HOME
-    $script:AppDataDir = Join-Path $env:HOME ".config"
+    $script:AppDataDir = if ($script:IsMacOS) {
+        [System.IO.Path]::Combine($env:HOME, "Library", "Application Support")
+    } else {
+        Join-Path $env:HOME ".config"
+    }
     $script:LocalAppDataDir = Join-Path $env:HOME ".local"
     $script:TempDir = if ($env:TMPDIR) { $env:TMPDIR } else { "/tmp" }
     $script:PathSep = ":"
