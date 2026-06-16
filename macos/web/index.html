@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CrossAgnetCoding</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --blue: #1890ff;
+    --blue-d: #2563eb;
+    --green: #16a34a;
+    --red: #dc2626;
+    --orange: #d97706;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-size: 13px;
+  }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 14px 18px 22px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .topbar h1 { font-size: 20px; margin: 0; font-weight: 700; }
+  select {
+    font-size: 13px; padding: 3px 6px; border: 1px solid var(--border);
+    border-radius: 4px; background: #fff;
+  }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 6px; }
+
+  .header { display: flex; gap: 20px; padding: 16px 18px; align-items: flex-start; }
+  .header .brand { min-width: 180px; }
+  .header .brand .name { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+  .pill {
+    display: inline-block; border: 1px solid var(--border); border-radius: 4px;
+    padding: 5px 14px; color: var(--muted); font-size: 12px;
+  }
+  .status-col { min-width: 300px; font-size: 13px; line-height: 1.9; }
+  .status-col .ok { color: var(--green); }
+  .status-col .off { color: var(--muted); }
+  .status-col .run { font-weight: 700; margin-top: 4px; }
+  .status-col .run.on { color: var(--green); }
+  .status-col .run.offline { color: var(--muted); }
+
+  .btn-grid { margin-left: auto; display: grid; grid-template-columns: repeat(4, 132px); gap: 8px; }
+  button.b {
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+    border-radius: 4px; padding: 7px 8px; font-size: 12px; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  button.b:hover { border-color: #cbd5e1; background: #f8fafc; }
+  button.b.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  button.b.primary:hover { background: var(--blue-d); border-color: var(--blue-d); }
+  button.b.danger { color: var(--red); }
+  button.b:disabled { opacity: .55; cursor: not-allowed; }
+
+  .paths { font-size: 12px; color: var(--muted); padding: 8px 18px 2px; line-height: 1.7; }
+
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin: 18px 2px 10px; }
+  .section-head h2 { font-size: 15px; margin: 0; font-weight: 700; }
+  .section-head .actions { display: flex; gap: 8px; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .card { padding: 12px 14px; }
+  .card .row1 { display: flex; justify-content: space-between; align-items: baseline; }
+  .card .row1 .cname { font-weight: 700; font-size: 14px; }
+  .card .inst { font-size: 12px; }
+  .card .inst.yes { color: var(--green); }
+  .card .inst.no { color: var(--muted); }
+  .badge {
+    display: inline-block; margin-top: 8px; background: #eff6ff; color: var(--blue-d);
+    border: 1px solid #bfdbfe; border-radius: 4px; padding: 1px 8px; font-size: 11px;
+  }
+  .card .row2 { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .card .mcp { font-size: 11px; color: var(--muted); }
+  .card .mcp.conf { color: var(--green); }
+
+  .bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+  fieldset { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin: 0; background: var(--card); }
+  fieldset legend { font-size: 12px; color: var(--muted); padding: 0 6px; }
+  #feedback { font-weight: 700; min-height: 120px; font-size: 13px; }
+  #feedback.ok { color: var(--green); }
+  #feedback.warn { color: var(--orange); }
+  #feedback.err { color: var(--red); }
+  #log {
+    background: #0b0f14; color: #4ade80; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; height: 150px; overflow-y: auto; padding: 8px 10px; border-radius: 4px;
+    white-space: pre-wrap; line-height: 1.5;
+  }
+
+  /* modals (storage / memory settings) */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.35);
+    display: none; align-items: center; justify-content: center; z-index: 50;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #fff; border-radius: 8px; width: 620px; max-width: 92vw; max-height: 88vh;
+    overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  }
+  .modal h3 { margin: 0; padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 15px; }
+  .modal .body { padding: 16px 18px; }
+  .modal .foot { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+  .srow { margin-bottom: 16px; }
+  .srow .nm { font-weight: 600; margin-bottom: 4px; }
+  .srow .pp { font-size: 12px; color: var(--muted); word-break: break-all; margin-bottom: 6px; }
+  .frow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .frow > label { width: 132px; font-size: 13px; flex: none; }
+  .frow input, .frow select { flex: 1; padding: 5px 7px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; background: #fff; }
+  .msection { font-weight: 700; margin: 16px 0 10px; font-size: 14px; }
+  .mnote { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>CrossAgnetCoding</h1>
+    <select id="lang">
+      <option value="zh">中文</option>
+      <option value="en">English</option>
+      <option value="zh-TW">繁體中文</option>
+    </select>
+  </div>
+
+  <div class="panel header">
+    <div class="brand">
+      <div class="name">CrossAgnetCoding</div>
+      <span class="pill" id="version">Version 0.0.1</span>
+    </div>
+    <div class="status-col">
+      <div id="st-node" class="off">Node.js</div>
+      <div id="st-am" class="off">AgentMemory</div>
+      <div id="st-iii" class="off">iii-engine</div>
+      <div id="st-run" class="run offline">—</div>
+    </div>
+    <div class="btn-grid" id="btn-grid"></div>
+  </div>
+
+  <div class="paths" id="paths"></div>
+
+  <div class="section-head">
+    <h2 id="agents-title">Coding Agent</h2>
+    <div class="actions">
+      <button class="b" data-act="refresh" id="b-refresh">刷新</button>
+      <button class="b primary" data-act="configure" id="b-configure">全部配置</button>
+    </div>
+  </div>
+  <div class="cards" id="cards"></div>
+
+  <div class="bottom">
+    <fieldset><legend id="lg-feedback">操作反馈</legend><div id="feedback"></div></fieldset>
+    <fieldset><legend id="lg-log">日志</legend><div id="log"></div></fieldset>
+  </div>
+</div>
+
+<!-- Storage settings modal -->
+<div class="modal-overlay" id="storage-modal">
+  <div class="modal">
+    <h3 id="sm-title">存储位置设置</h3>
+    <div class="body" id="sm-body"></div>
+    <div class="foot"><button class="b" id="sm-close">关闭</button></div>
+  </div>
+</div>
+
+<!-- Memory settings modal -->
+<div class="modal-overlay" id="memory-modal">
+  <div class="modal">
+    <h3 id="mm-title">记忆设置</h3>
+    <div class="body">
+      <div class="msection" id="mm-emb-sec"></div>
+      <div class="frow"><label id="mm-mode-l"></label><select id="mm-mode"></select></div>
+      <div class="frow"><label id="mm-fmt-l"></label><select id="mm-fmt"></select></div>
+      <div class="frow"><label id="mm-eburl-l"></label><input id="mm-eburl" /></div>
+      <div class="frow"><label id="mm-ebmodel-l"></label><input id="mm-ebmodel" /></div>
+      <div class="frow"><label id="mm-ebdim-l"></label><input id="mm-ebdim" /></div>
+      <div class="frow"><label id="mm-ebkey-l"></label><input id="mm-ebkey" type="password" /></div>
+      <div class="frow"><label></label><label style="width:auto;flex:1"><input type="checkbox" id="mm-hf" /> <span id="mm-hf-l"></span></label></div>
+      <div class="frow"><label></label><span style="flex:1"><button class="b" id="mm-install-local"></button> <span id="mm-local-status" style="margin-left:8px;font-size:12px"></span></span></div>
+      <div class="msection" id="mm-llm-sec"></div>
+      <div class="frow"><label id="mm-llmfmt-l"></label><select id="mm-llmfmt"></select></div>
+      <div class="frow"><label id="mm-llmurl-l"></label><input id="mm-llmurl" /></div>
+      <div class="frow"><label id="mm-llmmodel-l"></label><input id="mm-llmmodel" /></div>
+      <div class="frow"><label id="mm-llmkey-l"></label><input id="mm-llmkey" type="password" /></div>
+      <div class="msection" id="mm-tools-sec"></div>
+      <div class="frow"><label id="mm-tools-l"></label><select id="mm-tools"></select></div>
+      <div class="mnote" id="mm-note"></div>
+    </div>
+    <div class="foot">
+      <button class="b" id="mm-cancel"></button>
+      <button class="b primary" id="mm-save"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+let S = {};            // strings table for current lang
+let state = null;      // last /api/state snapshot
+let isBusy = false;
+
+const $ = (id) => document.getElementById(id);
+function fmt(s, ...args) { args.forEach((v, i) => { s = s.replace(new RegExp('\\{' + i + '\\}', 'g'), v); }); return s; }
+function tr(key) { return (S && S[key]) || key; }
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+function renderButtons() {
+  const running = state.env.service;
+  const defs = [
+    { act: 'install', cls: 'primary', label: tr('GuiInstallAll') },
+    running
+      ? { act: 'stop', cls: 'danger', label: tr('GuiStop') }
+      : { act: 'start', cls: '', label: tr('GuiStart') },
+    { act: 'refresh', cls: '', label: tr('GuiCheckStatus') },
+    { act: 'viewer', cls: '', label: tr('GuiViewer') },
+    { act: 'mcp-copy', cls: '', label: tr('GuiCopyMcp') },
+    { act: 'cli-copy', cls: '', label: tr('GuiCopyCli') },
+    { act: 'configure', cls: '', label: tr('GuiConfigureAll') },
+    { act: 'sync-shared', cls: '', label: tr('GuiSyncShared') },
+    { act: 'bridge', cls: '', label: tr('GuiBridge') },
+    { act: 'storage', cls: '', label: tr('GuiStorage') },
+    { act: 'memory', cls: '', label: tr('GuiMemory') },
+    { act: 'quit', cls: '', label: tr('GuiQuit') },
+  ];
+  const grid = $('btn-grid');
+  grid.innerHTML = '';
+  for (const d of defs) {
+    const b = document.createElement('button');
+    b.className = 'b ' + d.cls;
+    b.textContent = d.label;
+    b.dataset.act = d.act;
+    b.addEventListener('click', () => onAction(d.act));
+    grid.appendChild(b);
+  }
+}
+
+function renderStatus() {
+  const e = state.env;
+  const node = $('st-node');
+  node.textContent = e.node ? fmt(tr('NodeInstalled'), e.nodeVersion) : tr('NodeMissing');
+  node.className = e.node ? 'ok' : 'off';
+  const am = $('st-am');
+  am.textContent = e.agentMemory ? fmt(tr('AgentMemoryInstalled'), e.agentMemoryVersion || '?') : tr('AgentMemoryMissing');
+  am.className = e.agentMemory ? 'ok' : 'off';
+  const iii = $('st-iii');
+  iii.textContent = e.iii ? tr('IiiInstalled') : tr('IiiMissing');
+  iii.className = e.iii ? 'ok' : 'off';
+  const run = $('st-run');
+  run.textContent = e.service ? fmt(tr('GuiRunning'), e.ports.rest) : tr('GuiStopped');
+  run.className = 'run ' + (e.service ? 'on' : 'offline');
+
+  $('version').textContent = 'Version ' + state.app.version;
+  $('paths').innerHTML =
+    fmt(tr('GuiDataDir'), e.dataHome) + ' &nbsp;&nbsp; ' + fmt(tr('GuiServiceStore'), e.serviceDir) + '<br>' +
+    fmt(tr('GuiModelCache'), e.modelCacheDir) + ' &nbsp;&nbsp; ' +
+    fmt(tr('PortsInfo'), e.ports.rest, e.ports.streams, e.ports.viewer);
+}
+
+function renderCards() {
+  $('agents-title').textContent = tr('GuiAgentsTitle');
+  $('b-refresh').textContent = tr('GuiRefresh');
+  $('b-configure').textContent = tr('GuiConfigureAll');
+  $('lg-feedback').textContent = tr('GuiActionFeedback');
+  $('lg-log').textContent = tr('GuiLog');
+
+  const wrap = $('cards');
+  wrap.innerHTML = '';
+  for (const a of state.agents) {
+    const card = document.createElement('div');
+    card.className = 'panel card';
+    const inst = a.installed ? `<span class="inst yes">${tr('GuiInstalled')}</span>` : `<span class="inst no">${tr('GuiNotInstalled')}</span>`;
+    const mcp = a.configured
+      ? `<span class="mcp conf">${tr('GuiConfigured')}</span>`
+      : `<span class="mcp">${tr('GuiMcpMissing')}</span>`;
+    const cfgLabel = a.configured ? tr('GuiReconfigure') : tr('GuiConfigure');
+    card.innerHTML =
+      `<div class="row1"><span class="cname">${a.name}</span>${inst}</div>` +
+      `<span class="badge">${state.app.platform}</span>` +
+      `<div class="row2">${mcp}<button class="b" data-id="${a.id}">${cfgLabel}</button></div>`;
+    card.querySelector('button').addEventListener('click', () => onConfigureOne(a.id));
+    wrap.appendChild(card);
+  }
+}
+
+function setBusy(b) {
+  isBusy = b;
+  document.querySelectorAll('button.b').forEach((el) => { el.disabled = b; });
+  $('lang').disabled = b;
+}
+
+function logLine(line) {
+  const box = $('log');
+  const ts = new Date().toTimeString().slice(0, 8);
+  box.textContent += `[${ts}] ${line}\n`;
+  box.scrollTop = box.scrollHeight;
+}
+
+function setFeedback(text, level) {
+  const f = $('feedback');
+  f.textContent = text;
+  f.className = level === 'ok' ? 'ok' : level === 'warn' ? 'warn' : level === 'err' ? 'err' : '';
+}
+
+async function refreshState() {
+  state = await api('/api/state');
+  S = state.strings;
+  document.documentElement.lang = state.lang;
+  $('lang').value = state.lang;
+  renderButtons();
+  renderStatus();
+  renderCards();
+}
+
+async function onAction(act) {
+  if (isBusy) return;
+  if (act === 'quit') { await api('/api/quit'); window.close(); return; }
+  if (act === 'refresh') { await refreshState(); setFeedback(tr('GuiReady'), 'ok'); return; }
+  if (act === 'storage') { openStorageModal(); return; }
+  if (act === 'memory') { openMemoryModal(); return; }
+  await api('/api/action/' + act, { method: 'POST' });
+  // 'done' SSE event triggers a state refresh.
+}
+
+// --- Storage settings modal -------------------------------------------------
+function renderStorageBody() {
+  const e = state.env;
+  const rows = [
+    { key: 'home', nm: tr('StorageHomeRow'), pp: e.dataHome },
+    { key: 'serviceDir', nm: tr('StorageServiceRow'), pp: e.serviceDir },
+    { key: 'modelCacheDir', nm: tr('StorageModelRow'), pp: e.modelCacheDir },
+  ];
+  const body = $('sm-body');
+  body.innerHTML = '';
+  for (const r of rows) {
+    const div = document.createElement('div');
+    div.className = 'srow';
+    div.innerHTML = `<div class="nm">${r.nm}</div><div class="pp">${r.pp || ''}</div>`;
+    const btn = document.createElement('button');
+    btn.className = 'b';
+    btn.textContent = tr('StorageChoose');
+    btn.addEventListener('click', () => onMigrate(r.key));
+    div.appendChild(btn);
+    body.appendChild(div);
+  }
+  const note = document.createElement('div');
+  note.className = 'mnote';
+  note.textContent = tr('StorageNote');
+  body.appendChild(note);
+}
+
+function openStorageModal() {
+  $('sm-title').textContent = tr('StorageTitle');
+  $('sm-close').textContent = tr('GuiClose');
+  renderStorageBody();
+  $('storage-modal').classList.add('show');
+}
+
+async function onMigrate(key) {
+  // The native folder picker runs server-side; the call resolves after the
+  // user picks or cancels. Refresh paths + close on success.
+  await api('/api/action/migrate?key=' + encodeURIComponent(key), { method: 'POST' });
+  await refreshState();
+  renderStorageBody();
+}
+
+// --- Memory settings modal --------------------------------------------------
+const MEM_OPTS = {
+  mode: [['keyword', 'MemModeKeyword'], ['local', 'MemModeLocal'], ['cloud', 'MemModeCloud']],
+  emb: [['openai', 'OpenAI-compatible'], ['gemini', 'Gemini'], ['voyage', 'Voyage'], ['cohere', 'Cohere'], ['openrouter', 'OpenRouter']],
+  llm: [['none', 'MemLlmNone'], ['openai', 'OpenAI Chat Completions'], ['anthropic', 'Anthropic Messages'], ['gemini', 'Gemini'], ['openrouter', 'OpenRouter'], ['minimax', 'MiniMax']],
+  tools: [['core', 'MemToolsCore'], ['all', 'MemToolsAll']],
+};
+
+function fillSelect(id, opts, value) {
+  const sel = $(id);
+  sel.innerHTML = '';
+  for (const [val, labelKey] of opts) {
+    const o = document.createElement('option');
+    o.value = val;
+    // labelKey is a translation key for known UI strings, else a literal name.
+    o.textContent = (S && S[labelKey]) ? S[labelKey] : labelKey;
+    sel.appendChild(o);
+  }
+  sel.value = value;
+  if (!sel.value && sel.options.length) sel.selectedIndex = 0;
+}
+
+async function openMemoryModal() {
+  const m = await api('/api/memory');
+  $('mm-title').textContent = tr('MemTitle');
+  $('mm-emb-sec').textContent = tr('MemEmbSection');
+  $('mm-mode-l').textContent = tr('MemSearchMode');
+  $('mm-fmt-l').textContent = tr('MemCloudFormat');
+  $('mm-eburl-l').textContent = tr('MemBaseUrl');
+  $('mm-ebmodel-l').textContent = tr('MemEmbModel');
+  $('mm-ebdim-l').textContent = tr('MemDim');
+  $('mm-ebkey-l').textContent = tr('MemEmbKey');
+  $('mm-hf-l').textContent = tr('MemHfMirror');
+  $('mm-llm-sec').textContent = tr('MemLlmSection');
+  $('mm-llmfmt-l').textContent = tr('MemApiFormat');
+  $('mm-llmurl-l').textContent = tr('MemBaseUrl');
+  $('mm-llmmodel-l').textContent = tr('MemLlmModel');
+  $('mm-llmkey-l').textContent = tr('MemLlmKey');
+  $('mm-tools-sec').textContent = tr('MemToolsSection');
+  $('mm-tools-l').textContent = tr('MemToolsExposed');
+  $('mm-note').textContent = tr('MemNote');
+  $('mm-install-local').textContent = tr('MemInstallLocal');
+  updateLocalStatus();
+  $('mm-cancel').textContent = tr('GuiCancel');
+  $('mm-save').textContent = tr('GuiSave');
+
+  fillSelect('mm-mode', MEM_OPTS.mode, m.embeddingMode || 'keyword');
+  fillSelect('mm-fmt', MEM_OPTS.emb, m.embeddingFormat || 'openai');
+  fillSelect('mm-llmfmt', MEM_OPTS.llm, m.llmFormat || 'none');
+  fillSelect('mm-tools', MEM_OPTS.tools, m.tools || 'core');
+  $('mm-eburl').value = m.embeddingBaseUrl || '';
+  $('mm-ebmodel').value = m.embeddingModel || '';
+  $('mm-ebdim').value = m.embeddingDimensions || '';
+  $('mm-ebkey').value = m.embeddingApiKey || '';
+  $('mm-hf').checked = m.useHfMirror !== false;
+  $('mm-llmurl').value = m.llmBaseUrl || '';
+  $('mm-llmmodel').value = m.llmModel || '';
+  $('mm-llmkey').value = m.llmApiKey || '';
+  $('memory-modal').classList.add('show');
+}
+
+function updateLocalStatus() {
+  const el = $('mm-local-status');
+  const ready = !!(state && state.env && state.env.localEmbedding);
+  el.textContent = ready ? tr('MemLocalReady') : tr('MemLocalNotReady');
+  el.style.color = ready ? 'var(--green)' : 'var(--orange)';
+}
+
+async function onInstallLocal() {
+  await api('/api/action/install-local-embedding', { method: 'POST' });
+  await refreshState();
+  updateLocalStatus();
+}
+
+async function saveMemoryModal() {
+  const payload = {
+    embeddingMode: $('mm-mode').value,
+    embeddingFormat: $('mm-fmt').value,
+    embeddingBaseUrl: $('mm-eburl').value.trim(),
+    embeddingModel: $('mm-ebmodel').value.trim(),
+    embeddingDimensions: $('mm-ebdim').value.trim(),
+    embeddingApiKey: $('mm-ebkey').value.trim(),
+    llmFormat: $('mm-llmfmt').value,
+    llmBaseUrl: $('mm-llmurl').value.trim(),
+    llmModel: $('mm-llmmodel').value.trim(),
+    llmApiKey: $('mm-llmkey').value.trim(),
+    tools: $('mm-tools').value,
+    useHfMirror: $('mm-hf').checked,
+  };
+  await api('/api/memory', { method: 'POST', body: JSON.stringify(payload) });
+  $('memory-modal').classList.remove('show');
+}
+
+async function onConfigureOne(id) {
+  if (isBusy) return;
+  await api('/api/action/configure-one?id=' + encodeURIComponent(id), { method: 'POST' });
+}
+
+async function onLangChange() {
+  const lang = $('lang').value;
+  await api('/api/lang?lang=' + lang);
+  await refreshState();
+}
+
+function connectEvents() {
+  const es = new EventSource('/api/events');
+  es.onmessage = (ev) => {
+    let m;
+    try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type === 'log') logLine(m.line);
+    else if (m.type === 'feedback') setFeedback(m.text, m.level);
+    else if (m.type === 'busy') setBusy(m.busy);
+    else if (m.type === 'done') refreshState();
+  };
+  es.onerror = () => { /* auto-reconnects */ };
+}
+
+(async function init() {
+  await refreshState();
+  setFeedback(tr('GuiReady'), 'ok');
+  $('lang').addEventListener('change', onLangChange);
+
+  // Modal wiring.
+  $('sm-close').addEventListener('click', () => $('storage-modal').classList.remove('show'));
+  $('mm-cancel').addEventListener('click', () => $('memory-modal').classList.remove('show'));
+  $('mm-save').addEventListener('click', saveMemoryModal);
+  $('mm-install-local').addEventListener('click', onInstallLocal);
+  // Click the dim backdrop (outside the dialog) to dismiss.
+  for (const id of ['storage-modal', 'memory-modal']) {
+    $(id).addEventListener('click', (ev) => { if (ev.target === $(id)) $(id).classList.remove('show'); });
+  }
+
+  connectEvents();
+})();
+</script>
+</body>
+</html>

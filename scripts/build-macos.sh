@@ -29,20 +29,15 @@ echo "============================================"
 echo ""
 
 # --- Prerequisite checks ---
+# The macOS app is a pure Node.js implementation (no PowerShell). Node is only a
+# RUNTIME dependency for the end user; it is not needed to build the bundle.
 echo "[1/6] Checking prerequisites..."
 
-if ! command -v pwsh &>/dev/null; then
-    echo "  ⚠ WARNING: PowerShell (pwsh) is not installed (runtime dependency)."
-    echo "    Users will need: brew install powershell"
-else
-    echo "  ✓ pwsh $(pwsh --version 2>/dev/null || echo '(found)')"
-fi
-
 if ! command -v node &>/dev/null; then
-    echo "WARNING: Node.js not installed (needed at runtime)."
-    echo "  Install: brew install node@20"
+    echo "  ⚠ Node.js not found on this build machine (only needed at runtime)."
+    echo "    End users will be prompted to install it on first launch."
 else
-    echo "  ✓ node $(node --version)"
+    echo "  ✓ node $(node --version) (runtime dependency)"
 fi
 
 # --- Clean ---
@@ -54,26 +49,85 @@ echo "  ✓ Cleaned"
 
 # --- Copy source ---
 echo ""
-echo "[3/6] Copying source files..."
-cp "$SRC_DIR/AgentMemoryManager.ps1" "$MACOS_DIR/"
-echo "  ✓ AgentMemoryManager.ps1"
+echo "[3/6] Copying Node.js source..."
+APP_SRC_DIR="$RESOURCES_DIR/app"
+mkdir -p "$APP_SRC_DIR"
+cp "$ROOT/macos/cac.mjs" "$APP_SRC_DIR/"
+cp -R "$ROOT/macos/lib" "$APP_SRC_DIR/"
+cp -R "$ROOT/macos/web" "$APP_SRC_DIR/"
+echo "  ✓ cac.mjs + lib/ + web/"
 
 # --- Create launcher ---
 echo ""
 echo "[4/6] Creating launcher..."
 
+# CFBundleExecutable: runs (without a TTY) when the .app is double-clicked.
+# Finder launches with a minimal PATH, so we augment it the same way the Node
+# child will and source nvm. If Node is present we launch the GUI headlessly
+# (the manager itself opens a browser window — no Terminal clutter). If Node is
+# missing we hand off to setup-node.command inside Terminal, which can show the
+# install progress and guidance.
 cat > "$MACOS_DIR/launcher.sh" << 'LAUNCHER_EOF'
 #!/bin/bash
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PS1_PATH="$SCRIPT_DIR/AgentMemoryManager.ps1"
-if [ $# -eq 0 ]; then
-    exec pwsh -NoProfile -ExecutionPolicy Bypass -File "$PS1_PATH" -Tui
+HERE="$(cd "$(dirname "$0")" && pwd)"
+APP_DIR="$(cd "$HERE/../Resources/app" && pwd)"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"
+[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1
+
+if command -v node >/dev/null 2>&1; then
+    # Run Node as a child (NOT exec): keeping this in-bundle script as the app's
+    # process preserves the LaunchServices/Dock association, and the trap means a
+    # Quit (SIGTERM) or window-close also tears down the Node server.
+    node "$APP_DIR/cac.mjs" gui &
+    NODE_PID=$!
+    trap 'kill "$NODE_PID" 2>/dev/null' TERM INT EXIT
+    wait "$NODE_PID"
 else
-    exec pwsh -NoProfile -ExecutionPolicy Bypass -File "$PS1_PATH" "$@"
+    open -a Terminal "$APP_DIR/setup-node.command"
 fi
 LAUNCHER_EOF
 chmod +x "$MACOS_DIR/launcher.sh"
 echo "  ✓ launcher.sh"
+
+# Runs inside Terminal.app only when Node is missing. Terminal sources the
+# user's login profile, so most Node installs (Homebrew / official pkg / nvm)
+# are already on PATH; we additionally prepend common bin dirs and source nvm.
+# Offers a Homebrew install, otherwise opens nodejs.org and asks the user to
+# reopen the app. Once Node is available it launches the GUI.
+cat > "$APP_SRC_DIR/setup-node.command" << 'SETUP_EOF'
+#!/bin/bash
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"
+[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1
+APP_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+launch_gui() {
+    clear
+    exec node "$APP_DIR/cac.mjs" gui
+}
+
+command -v node >/dev/null 2>&1 && launch_gui
+
+if command -v brew >/dev/null 2>&1; then
+    CHOICE="$(osascript -e 'button returned of (display dialog "CrossAgnetCoding 需要 Node.js 运行。检测到 Homebrew，是否现在自动安装 Node？" buttons {"去官网下载", "自动安装"} default button "自动安装" with title "CrossAgnetCoding")' 2>/dev/null)"
+    if [ "$CHOICE" = "自动安装" ]; then
+        echo "正在通过 Homebrew 安装 Node.js… / Installing Node.js via Homebrew…"
+        brew install node
+        hash -r 2>/dev/null || true
+        command -v node >/dev/null 2>&1 && { echo "Node.js 安装完成 / installed: $(node --version)"; launch_gui; }
+        echo "自动安装未成功，请手动安装后重试。 / Auto-install failed; please install manually and retry."
+    fi
+fi
+
+echo "CrossAgnetCoding 需要 Node.js（建议 LTS）。请安装后重新打开本应用。"
+echo "CrossAgnetCoding requires Node.js (LTS recommended). Please install it and reopen."
+osascript -e 'display dialog "CrossAgnetCoding 需要 Node.js 运行。请安装 Node（建议 LTS）后重试。即将打开 nodejs.org。" buttons {"好"} default button 1 with title "CrossAgnetCoding"' >/dev/null 2>&1 || true
+open "https://nodejs.org/" >/dev/null 2>&1 || true
+echo ""
+read -n 1 -s -r -p "Press any key to close…"
+exit 1
+SETUP_EOF
+chmod +x "$APP_SRC_DIR/setup-node.command"
+echo "  ✓ setup-node.command"
 
 # --- Info.plist ---
 cat > "$CONTENTS_DIR/Info.plist" << 'PLIST_EOF'
@@ -120,14 +174,27 @@ ICON_SRC="$ROOT/icon/_preview.png"
 if command -v sips &>/dev/null && command -v iconutil &>/dev/null && [ -f "$ICON_SRC" ]; then
     ICONSET_DIR="$BUILD_DIR/AppIcon.iconset"
     mkdir -p "$ICONSET_DIR"
+
+    # Prefer a macOS-style rounded (squircle) master so the Dock icon matches
+    # native apps. Needs Pillow; falls back to the raw square source otherwise.
+    ICON_MASTER="$ICON_SRC"
+    ICON_STYLE="square (install Pillow for rounded corners)"
+    if python3 -c "import PIL" >/dev/null 2>&1; then
+        ROUNDED="$BUILD_DIR/icon_rounded.png"
+        if python3 "$SCRIPT_DIR/make-rounded-icon.py" "$ICON_SRC" "$ROUNDED" 1024 >/dev/null 2>&1; then
+            ICON_MASTER="$ROUNDED"
+            ICON_STYLE="rounded macOS style"
+        fi
+    fi
+
     for SIZE in 16 32 128 256 512; do
-        sips -z $SIZE $SIZE "$ICON_SRC" --out "$ICONSET_DIR/icon_${SIZE}x${SIZE}.png" >/dev/null 2>&1
+        sips -z $SIZE $SIZE "$ICON_MASTER" --out "$ICONSET_DIR/icon_${SIZE}x${SIZE}.png" >/dev/null 2>&1
         DOUBLE=$((SIZE * 2))
-        sips -z $DOUBLE $DOUBLE "$ICON_SRC" --out "$ICONSET_DIR/icon_${SIZE}x${SIZE}@2x.png" >/dev/null 2>&1
+        sips -z $DOUBLE $DOUBLE "$ICON_MASTER" --out "$ICONSET_DIR/icon_${SIZE}x${SIZE}@2x.png" >/dev/null 2>&1
     done
     iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/AppIcon.icns" 2>/dev/null
     rm -rf "$ICONSET_DIR"
-    echo "  ✓ AppIcon.icns (from icon/_preview.png)"
+    echo "  ✓ AppIcon.icns ($ICON_STYLE)"
 elif [ -f "$ICON_SRC" ]; then
     cp "$ICON_SRC" "$RESOURCES_DIR/AppIcon.png"
     echo "  ✓ AppIcon.png (from icon/_preview.png, no iconutil)"

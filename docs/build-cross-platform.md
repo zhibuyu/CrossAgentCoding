@@ -2,24 +2,24 @@
 
 ## 概述
 
-CrossAgnetCoding 是一个 PowerShell 脚本项目，在不同平台上以不同方式分发：
+CrossAgnetCoding 在不同平台上以**不同的实现与分发方式**分开打包：
 
-| 平台 | 分发方式 | 说明 |
-|------|---------|------|
-| **Windows** | `.exe` (IExpress) | 使用 `scripts/build.ps1` 打包 |
-| **macOS** | `.app` bundle | 使用 `scripts/build-macos.sh` 打包 |
-| **Linux** | Shell 启动脚本 | 使用 `scripts/build-linux.sh` 打包 |
+| 平台 | 实现 | 分发方式 | 说明 |
+|------|------|---------|------|
+| **Windows** | PowerShell + WinForms (`src/AgentMemoryManager.ps1`) | `.exe` (IExpress) | 使用 `scripts/build.ps1` 打包 |
+| **macOS** | 纯 Node.js (`macos/`) | `.app` + `.dmg` | 使用 `scripts/build-macos.sh` 打包，**不依赖 PowerShell** |
+| **Linux** | Shell 启动脚本 | Shell 启动脚本 | 使用 `scripts/build-linux.sh` 打包 |
+
+> macOS 版是独立的 Node.js 实现（零 npm 依赖），因为 Node 本就是 AgentMemory 的固有运行时依赖。这样用户无需安装 PowerShell。
 
 ## macOS 构建
 
 ### 前置依赖
 
 ```bash
-# 安装 PowerShell 7+
-brew install powershell
-
-# 安装 Node.js（运行时依赖）
-brew install node@20
+# Node.js 仅为运行时依赖（用户首次启动若缺失会被引导安装）。
+# 构建机本身不需要 Node 或 PowerShell——只用到系统自带的 sips / iconutil / hdiutil。
+brew install node@20   # 可选（建议，用于本地测试 CLI）
 ```
 
 ### 构建步骤
@@ -30,34 +30,27 @@ bash scripts/build-macos.sh
 ```
 
 构建产物：
-- `release/CrossAgnetCoding.app` — macOS 应用程序包（双击启动 TUI 模式）
-- `release/crossagnetcoding` — CLI 启动脚本
+- `release/CrossAgnetCoding-0.0.1.dmg` — 拖入 Applications 即用的磁盘映像
 
 ### 安装到系统
 
 ```bash
-# 安装 .app 到 Applications
-cp -R release/CrossAgnetCoding.app /Applications/
-
-# 安装 CLI 命令（可选）
-sudo ln -sf "$(pwd)/release/crossagnetcoding" /usr/local/bin/crossagnetcoding
+open release/CrossAgnetCoding-0.0.1.dmg   # 挂载后把 CrossAgnetCoding.app 拖入 Applications
 ```
+
+双击 .app：若无终端（Finder 启动）会自动用 Terminal.app 打开 TUI 菜单；若缺少 Node.js 则弹窗引导安装。
 
 ### 使用方式
 
 ```bash
-# CLI 模式
-crossagnetcoding -Cli env tools
-crossagnetcoding -Cli agents scan
-crossagnetcoding -Cli agents configure
+# 直接双击 /Applications/CrossAgnetCoding.app  → TUI 菜单
 
-# TUI 模式（文本界面）
-crossagnetcoding -Tui
-
-# 自检
-crossagnetcoding -SelfTest
-
-# 或直接双击 /Applications/CrossAgnetCoding.app
+# 或当作 CLI（同一份 Node 代码）：
+node /Applications/CrossAgnetCoding.app/Contents/Resources/app/cac.mjs env tools
+node .../cac.mjs agents scan
+node .../cac.mjs agents configure
+node .../cac.mjs start            # 启动 AgentMemory 服务
+node .../cac.mjs --lang en mcp    # 复制 MCP 配置（英文界面）
 ```
 
 ## Linux 构建
@@ -99,9 +92,11 @@ cp release/CrossAgnetCoding.desktop ~/.local/share/applications/
 
 ### `scripts/build-macos.sh` (macOS)
 - 创建标准 `.app` bundle 结构（Contents/MacOS/、Contents/Resources/、Info.plist）
-- 生成启动脚本 `launcher.sh` 作为 CFBundleExecutable
-- 生成 CLI 启动器 `crossagnetcoding`
-- 自动生成应用图标（紫色圆形渐变）
+- 把 `macos/`（`cac.mjs` + `lib/`）复制进 `Contents/Resources/app/`
+- 生成 `launcher.sh`（CFBundleExecutable）与 `run-tui.command`：双击时用 Terminal.app 打开 TUI，缺 Node 时引导安装
+- 用 `sips` + `iconutil` 从 `icon/_preview.png` 生成真实 `AppIcon.icns`
+- 用 `hdiutil`（缺失时回退到 `scripts/mkdmgtool.py`）打包为 `.dmg`
+- **不依赖 PowerShell**
 
 ### `scripts/build-linux.sh` (Linux)
 - 创建 CLI 启动脚本
@@ -109,7 +104,7 @@ cp release/CrossAgnetCoding.desktop ~/.local/share/applications/
 
 ## 注意事项
 
-1. **GUI 仅限 Windows**：WinForms GUI 仅在 Windows 上可用。macOS/Linux 下自动使用 TUI 模式。
-2. **PowerShell 版本**：需要 PowerShell 7+（`pwsh`），Windows 上也可使用内置的 PowerShell 5.1。
-3. **Node.js**：运行时依赖，用于 AgentMemory 和 iii-engine。
-4. **架构支持**：x64 和 ARM64（Apple Silicon）均支持。
+1. **GUI 仅限 Windows**：WinForms GUI 仅在 Windows 上可用。macOS 使用 Node.js TUI；Linux 使用 PowerShell TUI。
+2. **PowerShell**：仅 Windows / Linux 实现需要；**macOS 版为纯 Node.js，无需 PowerShell**。
+3. **Node.js**：所有平台的运行时依赖（AgentMemory / iii-engine），macOS 版同时用它实现管理器本身。
+4. **架构支持**：x64 和 ARM64（Apple Silicon）均支持；iii-engine 按架构下载对应的 `*-apple-darwin` 发行包。
