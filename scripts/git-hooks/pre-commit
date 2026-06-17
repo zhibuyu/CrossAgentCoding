@@ -1,0 +1,37 @@
+#!/bin/sh
+# CrossAgnetCoding pre-commit secret guard.
+#
+# Blocks commits that contain API keys / secrets. Keys belong ONLY in the local
+# settings.json under your data home (outside the repo) — never in git.
+#
+# Enable for this clone:  git config core.hooksPath scripts/git-hooks
+#
+# Bypass once (NOT recommended):  git commit --no-verify
+
+# Only the lines being ADDED (ignore context and removed lines), excluding this
+# hook file and markdown docs (which legitimately describe key patterns).
+added=$(git diff --cached -U0 --diff-filter=AM -- . ':(exclude)scripts/git-hooks/*' ':(exclude)*.md' \
+        | grep -E '^\+' | grep -vE '^\+\+\+')
+
+hits=$(printf '%s\n' "$added" | grep -nEi \
+  -e 'sk-ant-[A-Za-z0-9_-]{20}' \
+  -e 'sk-[A-Za-z0-9]{32}' \
+  -e '[a-f0-9]{24,}\.[A-Za-z0-9_-]{12,}' \
+  -e '(api[_-]?key|secret|token|password)["'"'"' :=]{1,4}[A-Za-z0-9._-]{20}')
+
+# Drop obvious placeholders / examples.
+hits=$(printf '%s\n' "$hits" | grep -vEi 'example|placeholder|your[-_]?(key|token)|xxxx|<[^>]+>|\*\*\*|dummy|sample|changeme')
+hits=$(printf '%s\n' "$hits" | sed '/^$/d')
+
+if [ -n "$hits" ]; then
+  echo "============================================================"
+  echo " 提交被拦截：检测到疑似 API Key / Secret。"
+  echo " 密钥请只放在本机 settings.json（数据目录里），不要提交到 git。"
+  echo " 如确认是误报，可用  git commit --no-verify  跳过。"
+  echo "------------------------------------------------------------"
+  printf '%s\n' "$hits"
+  echo "============================================================"
+  exit 1
+fi
+
+exit 0

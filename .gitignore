@@ -11,3 +11,12 @@
 # Stray Windows PowerShell module cache
 /Microsoft/
 
+# 本地密钥与配置（含 API Key）——只保留在本机数据目录，绝不提交到 git
+settings.json
+**/settings.json
+.env
+.env.*
+*.local.json
+*.secret
+secrets.json
+*.key
