@@ -259,5 +259,13 @@ if ($LASTEXITCODE -ne 0) {
 # ── Step 5: Cleanup ──
 Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
 
-$fileSize = [math]::Round((Get-Item -LiteralPath $OutputExe).Length / 1KB)
+# NTFS "file tunneling" preserves the original CreationTime when an exe is
+# rebuilt in place under the same name, which makes Explorer show a stale
+# "Created" date. Stamp both timestamps to now so the build time is honest.
+$built = Get-Item -LiteralPath $OutputExe
+$now = Get-Date
+$built.CreationTime = $now
+$built.LastWriteTime = $now
+
+$fileSize = [math]::Round($built.Length / 1KB)
 Write-Host "Built $OutputExe ($fileSize KB)"
