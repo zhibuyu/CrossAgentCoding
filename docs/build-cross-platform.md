@@ -95,7 +95,7 @@ cp release/CrossAgentCoding.desktop ~/.local/share/applications/
 - 把 `macos/`（`cac.mjs` + `lib/`）复制进 `Contents/Resources/app/`
 - 生成 `launcher.sh`（CFBundleExecutable）与 `run-tui.command`：双击时用 Terminal.app 打开 TUI，缺 Node 时引导安装
 - 用 `sips` + `iconutil` 从 `icon/_preview.png` 生成真实 `AppIcon.icns`
-- 用 `hdiutil`（缺失时回退到 `scripts/mkdmgtool.py`）打包为 `.dmg`
+- 用 `hdiutil` 打包为 `.dmg`（仅 macOS 可生成有效磁盘映像；`scripts/mkdmgtool.py` 也只是对 `hdiutil` 的封装，缺失时直接报错而非产出损坏文件）
 - **不依赖 PowerShell**
 
 ### `scripts/build-linux.sh` (Linux)

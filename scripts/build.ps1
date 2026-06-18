@@ -1,5 +1,5 @@
 ﻿$ErrorActionPreference = "Stop"
-$root = "d:\otherWorkspace\code_plugin\CrossAgentCoding"
+$root = Split-Path -Parent $PSScriptRoot
 $src = Join-Path $root "src"
 $stage = Join-Path $root "_manager_stage"
 $OutputExe = Join-Path $root "release\CrossAgentCoding.exe"
