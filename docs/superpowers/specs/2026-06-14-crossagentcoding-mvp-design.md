@@ -1,8 +1,8 @@
-# CrossAgnetCoding MVP Design
+# CrossAgentCoding MVP Design
 
 ## Goal
 
-Build a focused MVP that turns CrossAgnetCoding into a shared workspace memory and agent-connection manager, with Codex and TRAE SOLO/CN as first-class paths.
+Build a focused MVP that turns CrossAgentCoding into a shared workspace memory and agent-connection manager, with Codex and TRAE SOLO/CN as first-class paths.
 
 ## Product Scope
 
@@ -15,8 +15,8 @@ Included:
 - First-class Codex and TRAE SOLO/CN support.
 - Additional target definitions for Claude Code, Claude Desktop, Gemini CLI, OpenCode, OpenClaw, and Hermes Agent.
 - Workspace memory tied to a project directory, not to a Codex or TRAE account.
-- Session bridge summaries from readable local session/log directories into CrossAgnetCoding workspace memory.
-- Configurable CrossAgnetCoding data directory with safe migration.
+- Session bridge summaries from readable local session/log directories into CrossAgentCoding workspace memory.
+- Configurable CrossAgentCoding data directory with safe migration.
 - GUI status cards plus CLI/TUI commands for repeatable workflows.
 - Environment detection that does not repeatedly launch a broken `node.exe`.
 
@@ -32,7 +32,7 @@ Deferred:
 
 The app remains one PowerShell source file for the MVP, but responsibilities are separated by function group:
 
-- App home/settings: resolves `%USERPROFILE%\.CrossAgnetCoding` by default, reads/writes `settings.json`, migrates data.
+- App home/settings: resolves `%USERPROFILE%\.CrossAgentCoding` by default, reads/writes `settings.json`, migrates data.
 - Tool targets: declarative list of supported tools with install command, config path, MCP format, prompt file name, and priority.
 - Environment status: checks Node.js, AgentMemory, iii-engine, and service state with cached results and cooldown.
 - Config writers: JSON, TOML, and YAML-ish writers that back up user files before writing.
@@ -62,7 +62,7 @@ TRAE:
 
 Workspace identity is based on normalized project path plus Git remote when available. The memory store is independent from app accounts.
 
-This means that if a user logs out of Codex and signs in with another account, loading the same project directory can still find CrossAgnetCoding workspace memory. Codex's own old account history may be inaccessible, but bridge summaries and AgentMemory-backed project memory remain available.
+This means that if a user logs out of Codex and signs in with another account, loading the same project directory can still find CrossAgentCoding workspace memory. Codex's own old account history may be inaccessible, but bridge summaries and AgentMemory-backed project memory remain available.
 
 Workspace files:
 
@@ -90,7 +90,7 @@ If missing, the UI/CLI/TUI offers automatic configuration. Writes always back up
 Default home:
 
 ```text
-%USERPROFILE%\.CrossAgnetCoding
+%USERPROFILE%\.CrossAgentCoding
 ```
 
 The MVP supports:

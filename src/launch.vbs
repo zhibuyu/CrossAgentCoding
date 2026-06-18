@@ -7,10 +7,10 @@ Set fso = CreateObject("Scripting.FileSystemObject")
 
 folder = fso.GetParentFolderName(WScript.ScriptFullName)
 ps1 = fso.BuildPath(folder, "AgentMemoryManager.ps1")
-logPath = fso.BuildPath(shell.ExpandEnvironmentStrings("%TEMP%"), "CrossAgnetCoding-error.log")
+logPath = fso.BuildPath(shell.ExpandEnvironmentStrings("%TEMP%"), "CrossAgentCoding-error.log")
 
 If Not fso.FileExists(ps1) Then
-    MsgBox "CrossAgnetCoding: missing AgentMemoryManager.ps1" & vbCrLf & ps1, vbCritical, "CrossAgnetCoding"
+    MsgBox "CrossAgentCoding: missing AgentMemoryManager.ps1" & vbCrLf & ps1, vbCritical, "CrossAgentCoding"
     WScript.Quit 1
 End If
 
@@ -22,12 +22,12 @@ cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidde
 On Error Resume Next
 rc = shell.Run(cmd, 0, True)
 If Err.Number <> 0 Then
-    MsgBox "CrossAgnetCoding failed to launch PowerShell." & vbCrLf & Err.Description, vbCritical, "CrossAgnetCoding"
+    MsgBox "CrossAgentCoding failed to launch PowerShell." & vbCrLf & Err.Description, vbCritical, "CrossAgentCoding"
     WScript.Quit 1
 End If
 On Error Goto 0
 
 If rc <> 0 Then
-    MsgBox "CrossAgnetCoding could not start (exit code " & rc & ")." & vbCrLf & _
-        "See log if present: " & logPath, vbExclamation, "CrossAgnetCoding"
+    MsgBox "CrossAgentCoding could not start (exit code " & rc & ")." & vbCrLf & _
+        "See log if present: " & logPath, vbExclamation, "CrossAgentCoding"
 End If

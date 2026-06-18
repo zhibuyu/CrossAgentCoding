@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CrossAgnetCoding macOS manager — Node.js entry point.
+// CrossAgentCoding macOS manager — Node.js entry point.
 // No arguments (or `tui`) launches the interactive menu; otherwise dispatches a
 // CLI subcommand. Pure Node standard library, zero npm dependencies.
 import { initLangFromEnv, runTui } from './lib/tui.mjs';
@@ -16,7 +16,7 @@ import { runGui } from './lib/server.mjs';
 import { setLang } from './lib/i18n.mjs';
 
 function printHelp() {
-  console.log(`CrossAgnetCoding (macOS) — AgentMemory manager
+  console.log(`CrossAgentCoding (macOS) — AgentMemory manager
 
 Usage:
   cac                       Graphical web GUI (default)

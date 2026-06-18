@@ -1,13 +1,13 @@
 // Relocatable storage: move the AgentMemory service dir, the model cache dir, or
-// the whole CrossAgnetCoding data home, copying existing data and repointing
+// the whole CrossAgentCoding data home, copying existing data and repointing
 // settings.json. Mirrors Move-StorageLocation (ps1:1901), Set-StorageSetting
-// (ps1:1860) and Move-CrossAgnetCodingHome (ps1:1783).
+// (ps1:1860) and Move-CrossAgentCodingHome (ps1:1783).
 import fs from 'node:fs';
 import path from 'node:path';
 import {
   readSettings,
   writeSettings,
-  crossAgnetCodingHome,
+  CrossAgentCodingHome,
   serviceWorkDir,
   modelCacheDir,
 } from './platform.mjs';
@@ -66,9 +66,9 @@ export function moveStorageLocation(key, newDir, switchOnly = false) {
 
 // Move the whole data home to `newHome`, copying contents and repointing
 // settings.dataHome. Returns { oldHome, newHome, migrated }.
-export function moveCrossAgnetCodingHome(newHome, switchOnly = false) {
-  if (!newHome || !String(newHome).trim()) throw new Error('New CrossAgnetCoding data directory is required');
-  const oldHome = crossAgnetCodingHome();
+export function moveCrossAgentCodingHome(newHome, switchOnly = false) {
+  if (!newHome || !String(newHome).trim()) throw new Error('New CrossAgentCoding data directory is required');
+  const oldHome = CrossAgentCodingHome();
   const target = path.resolve(newHome);
 
   assertWritable(target);

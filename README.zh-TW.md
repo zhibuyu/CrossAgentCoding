@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP">
 </p>
 
-<h1 align="center">CrossAgnetCoding</h1>
+<h1 align="center">CrossAgentCoding</h1>
 
 <p align="center">
   <a href="README.md">English</a> | <a href="README.zh-CN.md">简体中文</a> | <b>繁體中文</b>
@@ -33,7 +33,7 @@
 
 你可能同時使用多個 AI 編碼工具（Codex、TRAE、Claude、Gemini 等）。每個工具的對話記憶互相隔離，換工具、換帳號、重啟後就丟失了之前討論的目標、決策和約定。
 
-**CrossAgnetCoding 的做法：** 在本地啟動一個 AgentMemory 服務（`http://localhost:3111`），透過 MCP（模型上下文協定）一鍵接入所有編碼工具，讓它們共享同一份持久化記憶——上下文在切換工具、切換帳號、重啟後依然保留。
+**CrossAgentCoding 的做法：** 在本地啟動一個 AgentMemory 服務（`http://localhost:3111`），透過 MCP（模型上下文協定）一鍵接入所有編碼工具，讓它們共享同一份持久化記憶——上下文在切換工具、切換帳號、重啟後依然保留。
 
 > 靈感來源：[rohitg00/agentmemory](https://github.com/rohitg00/agentmemory)（持久化記憶）和 [farion1231/cc-switch](https://github.com/farion1231/cc-switch/)（多工具配置）。
 
@@ -43,7 +43,7 @@
 
 ### Windows（預構建 EXE）
 
-1. 從 [Releases](https://github.com/zhibuyu/CrossAgnetCoding/releases) 下載 `CrossAgnetCoding.exe`
+1. 從 [Releases](https://github.com/zhibuyu/CrossAgentCoding/releases) 下載 `CrossAgentCoding.exe`
 2. 執行，點選 **安裝全部** 安裝 Node.js、AgentMemory 和 iii-engine
 3. 點選 **啟動服務**，等待顯示 `執行中 (localhost:3111)`
 4. 點選 **全部配置** 寫入各工具的 MCP 配置
@@ -57,8 +57,8 @@
 # Linux: sudo apt install powershell nodejs
 
 # 複製並執行
-git clone https://github.com/zhibuyu/CrossAgnetCoding.git
-cd CrossAgnetCoding
+git clone https://github.com/zhibuyu/CrossAgentCoding.git
+cd CrossAgentCoding
 pwsh ./src/AgentMemoryManager.ps1
 
 # 或使用 CLI 模式
@@ -142,7 +142,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\src\AgentMemoryManager.ps1
 - **MCP 工具集**：核心（7 個工具）或全部（51 個工具）
 
 ### 📦 儲存遷移
-三類目錄可獨立遷移：CrossAgnetCoding 資料目錄、AgentMemory 記憶儲存目錄、模型快取目錄。支援 GUI 資料夾選擇器或 CLI。
+三類目錄可獨立遷移：CrossAgentCoding 資料目錄、AgentMemory 記憶儲存目錄、模型快取目錄。支援 GUI 資料夾選擇器或 CLI。
 
 ### 🖥️ GUI + CLI + TUI
 完整的 WinForms 圖形介面、PowerShell 命令列、文字介面三種模式。
@@ -169,7 +169,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\src\AgentMemoryManager.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-使用 Windows 內建 IExpress 打包。輸出：`release\CrossAgnetCoding.exe`
+使用 Windows 內建 IExpress 打包。輸出：`release\CrossAgentCoding.exe`
 
 ### macOS / Linux
 
@@ -177,12 +177,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 
 ```bash
 # 建立便捷啟動器
-cat > crossagnetcoding << 'EOF'
+cat > crossagentcoding << 'EOF'
 #!/bin/bash
 pwsh "$(dirname "$0")/src/AgentMemoryManager.ps1" "$@"
 EOF
-chmod +x crossagnetcoding
-./crossagnetcoding -Cli env tools
+chmod +x crossagentcoding
+./crossagentcoding -Cli env tools
 ```
 
 ## 測試
@@ -197,7 +197,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tests\selftest.ps1
 
 ## 安全 —— 金鑰只留本機
 
-你在**記憶設定**裡填的 API Key **只**儲存在本機 `settings.json`（位於資料目錄，如 `%USERPROFILE%\.CrossAgnetCoding`，在儲存庫之外）。在 Windows 上它**加密儲存**（DPAPI，繫結你的使用者帳戶），僅在服務啟動時於記憶體中解密使用。它**只**會傳送給你設定的 LLM/Embedding 端點，**絕不**提交到 git。（舊的明文 Key 可用 `... -Cli memory encrypt` 遷移，或在記憶設定裡重新儲存一次即可。）
+你在**記憶設定**裡填的 API Key **只**儲存在本機 `settings.json`（位於資料目錄，如 `%USERPROFILE%\.CrossAgentCoding`，在儲存庫之外）。在 Windows 上它**加密儲存**（DPAPI，繫結你的使用者帳戶），僅在服務啟動時於記憶體中解密使用。它**只**會傳送給你設定的 LLM/Embedding 端點，**絕不**提交到 git。（舊的明文 Key 可用 `... -Cli memory encrypt` 遷移，或在記憶設定裡重新儲存一次即可。）
 
 兩道防線確保金鑰不入庫：
 
@@ -217,7 +217,7 @@ git config core.hooksPath scripts/git-hooks
 ## 專案結構
 
 ```
-CrossAgnetCoding/
+CrossAgentCoding/
 ├── src/
 │   ├── AgentMemoryManager.ps1   # 主程式（GUI + 全部邏輯）
 │   └── launch.vbs               # 隱藏啟動器（無命令列視窗）

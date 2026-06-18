@@ -1,5 +1,5 @@
 // Display-oriented actions shared by the CLI and the TUI.
-import { PORT, STREAMS_PORT, VIEWER_PORT, crossAgnetCodingHome } from './platform.mjs';
+import { PORT, STREAMS_PORT, VIEWER_PORT, CrossAgentCodingHome } from './platform.mjs';
 import { environmentStatus } from './env.mjs';
 import { agentClientStatuses, configureAllAgents } from './agents.mjs';
 import { MCP_CONFIG_JSON, cliConfigCommands } from './mcp.mjs';
@@ -19,7 +19,7 @@ export async function showEnv(log = console.log) {
   log('  ' + (s.iii ? t('IiiInstalled') : t('IiiMissing')));
   log('  ' + (s.service ? t('ServiceRunning', PORT) : t('ServiceStopped')));
   log('  ' + t('PortsInfo', PORT, STREAMS_PORT, VIEWER_PORT));
-  log('  ' + t('DataHome', crossAgnetCodingHome()));
+  log('  ' + t('DataHome', CrossAgentCodingHome()));
   return s;
 }
 

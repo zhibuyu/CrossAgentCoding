@@ -16,7 +16,7 @@ import {
   PORT,
   STREAMS_PORT,
   VIEWER_PORT,
-  crossAgnetCodingHome,
+  CrossAgentCodingHome,
   serviceWorkDir,
   modelCacheDir,
 } from './platform.mjs';
@@ -26,7 +26,7 @@ import { MCP_CONFIG_JSON, cliConfigCommands } from './mcp.mjs';
 import { installAll, installLocalEmbedding } from './install.mjs';
 import { startService, stopService, openViewer } from './service.mjs';
 import { syncSharedAgentFiles, initializeWorkspaceMemory } from './workspace.mjs';
-import { moveStorageLocation, moveCrossAgnetCodingHome } from './storage.mjs';
+import { moveStorageLocation, moveCrossAgentCodingHome } from './storage.mjs';
 import { getMemorySettings, saveMemorySettings } from './memory.mjs';
 import { pbcopy } from './util.mjs';
 import { setLang, getLang, allStrings, t } from './i18n.mjs';
@@ -87,7 +87,7 @@ async function buildState() {
       localEmbedding: localEmbeddingReady(),
       service: env.service,
       ports: { rest: PORT, streams: STREAMS_PORT, viewer: VIEWER_PORT },
-      dataHome: crossAgnetCodingHome(),
+      dataHome: CrossAgentCodingHome(),
       serviceDir: serviceWorkDir(),
       modelCacheDir: modelCacheDir(),
     },
@@ -173,7 +173,7 @@ async function runAction(name, params = {}) {
         return r;
       }
       case 'bridge': {
-        const dir = chooseFolder(t('BridgeWorkspacePrompt'), crossAgnetCodingHome());
+        const dir = chooseFolder(t('BridgeWorkspacePrompt'), CrossAgentCodingHome());
         if (!dir) return { ok: false, reason: 'cancelled' };
         const ws = initializeWorkspaceMemory(dir);
         pushLog(t('BridgeWorkspaceDone', ws.workspacePath));
@@ -186,10 +186,10 @@ async function runAction(name, params = {}) {
         const promptKey =
           key === 'modelCacheDir' ? 'StoragePickModel' : key === 'serviceDir' ? 'StoragePickService' : 'MigrateDataPrompt';
         const current =
-          key === 'modelCacheDir' ? modelCacheDir() : key === 'serviceDir' ? serviceWorkDir() : crossAgnetCodingHome();
+          key === 'modelCacheDir' ? modelCacheDir() : key === 'serviceDir' ? serviceWorkDir() : CrossAgentCodingHome();
         const dir = chooseFolder(t(promptKey), current);
         if (!dir) return { ok: false, reason: 'cancelled' };
-        const result = key === 'home' ? moveCrossAgnetCodingHome(dir) : moveStorageLocation(key, dir);
+        const result = key === 'home' ? moveCrossAgentCodingHome(dir) : moveStorageLocation(key, dir);
         const newDir = result.newDir || result.newHome;
         pushLog(t('StorageMigrated', newDir));
         pushFeedback(t('StorageMigrated', newDir), 'ok');
@@ -401,7 +401,7 @@ export async function runGui() {
   const server = createServer();
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
   const urlStr = `http://localhost:${port}/`;
-  console.log(`CrossAgnetCoding GUI: ${urlStr}`);
+  console.log(`CrossAgentCoding GUI: ${urlStr}`);
   console.log('关闭此终端或在界面点击「退出」可结束。/ Close this terminal or click “Quit” to stop.');
   // Seed the log panel once a client connects shortly after open.
   setTimeout(() => {

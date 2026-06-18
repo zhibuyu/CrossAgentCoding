@@ -1,5 +1,5 @@
 #!/bin/sh
-# CrossAgnetCoding pre-commit secret guard.
+# CrossAgentCoding pre-commit secret guard.
 #
 # Blocks commits that contain API keys / secrets. Keys belong ONLY in the local
 # settings.json under your data home (outside the repo) — never in git.

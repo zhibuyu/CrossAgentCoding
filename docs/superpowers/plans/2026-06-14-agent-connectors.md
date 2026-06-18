@@ -20,7 +20,7 @@
 - Modify: `src/AgentMemoryManager.ps1`
 
 - [x] Ensure `src/AgentMemoryManager.ps1` and `src/launch.vbs` are retained as editable source.
-- [x] Add `scripts/build.ps1` to package `src/AgentMemoryManager.ps1` and `src/launch.vbs` into `CrossAgnetCoding.exe`.
+- [x] Add `scripts/build.ps1` to package `src/AgentMemoryManager.ps1` and `src/launch.vbs` into `CrossAgentCoding.exe`.
 - [x] Add `tests/selftest.ps1` to run `src/AgentMemoryManager.ps1 -SelfTest`.
 - [x] Add documentation describing project structure, build command, test command, and feature responsibilities.
 
@@ -63,6 +63,6 @@
 - [x] Add a `Coding Agent Access` group to the UI with status lines and buttons.
 - [x] Keep Chinese/English language switching for all new strings.
 - [x] Run `tests/selftest.ps1`.
-- [x] Build `CrossAgnetCoding.exe`.
+- [x] Build `CrossAgentCoding.exe`.
 - [x] Verify package `RUNPROGRAM` is `wscript.exe launch.vbs`, not `cmd /c`.
 - [x] Smoke start the exe and verify no `cmd.exe` process is launched.

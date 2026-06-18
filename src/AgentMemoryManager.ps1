@@ -1,4 +1,4 @@
-﻿param(
+param(
     [switch]$SelfTest,
     [switch]$Cli,
     [switch]$Tui,
@@ -65,7 +65,7 @@ $ErrorActionPreference = "Continue"
 $script:AM_DIR = Join-Path $script:HomeDir ".agentmemory"
 $script:LOCAL_BIN = Join-Path $script:LocalAppDataDir "bin"
 $script:NPM_GLOBAL = if ($script:IsWindows) { Join-Path $script:AppDataDir "npm" } else { Join-Path $script:HomeDir ".npm-global" }
-$script:APP_NAME = "CrossAgnetCoding"
+$script:APP_NAME = "CrossAgentCoding"
 $script:APP_VERSION = "0.0.1"
 $script:III_VERSION = "v0.11.2"
 $script:PORT = 3111
@@ -83,8 +83,8 @@ $script:NodeVersionFailureCooldownSeconds = 300
 
 $script:Text = @{
     zh = @{
-        WindowTitle = "CrossAgnetCoding v0.0.1"
-        Title = "CrossAgnetCoding 跨 Coding Agent 记忆管理器"
+        WindowTitle = "CrossAgentCoding v0.0.1"
+        Title = "CrossAgentCoding 跨 Coding Agent 记忆管理器"
         SettingsTitle = "设置"
         AboutTab = "关于"
         GeneralTab = "通用"
@@ -106,7 +106,7 @@ $script:Text = @{
         MemorySettings = "记忆设置"
         StorageSettings = "存储设置"
         StorageTitle = "存储位置设置"
-        StorageHomeRow = "CrossAgnetCoding 数据目录（工作区、共享 Prompt、设置）"
+        StorageHomeRow = "CrossAgentCoding 数据目录（工作区、共享 Prompt、设置）"
         StorageServiceRow = "AgentMemory 数据目录（记忆库 data/ 与服务日志）"
         StorageModelRow = "模型缓存目录（本地向量模型 all-MiniLM-L6-v2）"
         StorageChooseMigrate = "选择并迁移…"
@@ -154,8 +154,8 @@ $script:Text = @{
         InstallStatus = "安装状态"
         Installed = "已安装"
         NotInstalled = "未安装"
-        Configured = "已连接 CrossAgnetCoding"
-        NotConfigured = "未连接 CrossAgnetCoding"
+        Configured = "已连接 CrossAgentCoding"
+        NotConfigured = "未连接 CrossAgentCoding"
         UnknownVersion = "可执行，版本未知"
         NotChecked = "未检查"
         Scanning = "扫描中…"
@@ -165,7 +165,7 @@ $script:Text = @{
         InstallOrExecutableMissing = "未安装或不可执行"
         ConfigureTool = "配置"
         ReconfigureTool = "重新配置"
-        ToolConfigureDone = "{0} 已写入 CrossAgnetCoding MCP 配置"
+        ToolConfigureDone = "{0} 已写入 CrossAgentCoding MCP 配置"
         AgentInstalledConfigured = "{0} - 已安装 / 已配置"
         AgentInstalledNotConfigured = "{0} - 已安装 / 未配置"
         AgentMissingConfigured = "{0} - 未检测到安装 / 已有配置"
@@ -179,7 +179,7 @@ $script:Text = @{
         BridgeWorkspacePrompt = "请选择要桥接记忆的项目目录"
         BridgeWorkspaceDone = "工作区桥接完成：{0}"
         BridgeWorkspaceTitle = "桥接完成"
-        MigrateDataPrompt = "请选择新的 CrossAgnetCoding 数据目录"
+        MigrateDataPrompt = "请选择新的 CrossAgentCoding 数据目录"
         MigrateDataDone = "数据目录已迁移：{0}"
         MigrateDataTitle = "迁移完成"
         Log = "日志"
@@ -224,13 +224,13 @@ $script:Text = @{
         MissingInstallFirst = "未安装：{0}，请先安装"
         ServiceLog = "服务日志：{0}"
         SelfTestOk = "SELFTEST OK"
-        InitialLog1 = "CrossAgnetCoding 已就绪"
+        InitialLog1 = "CrossAgentCoding 已就绪"
         InitialLog2 = "未安装时请点击 [安装全部]"
         InitialLog3 = "安装完成后点击 [启动服务]"
     }
     en = @{
-        WindowTitle = "CrossAgnetCoding v0.0.1"
-        Title = "CrossAgnetCoding Cross-Agent Memory Manager"
+        WindowTitle = "CrossAgentCoding v0.0.1"
+        Title = "CrossAgentCoding Cross-Agent Memory Manager"
         SettingsTitle = "Settings"
         AboutTab = "About"
         GeneralTab = "General"
@@ -252,7 +252,7 @@ $script:Text = @{
         MemorySettings = "Memory Settings"
         StorageSettings = "Storage Settings"
         StorageTitle = "Storage Locations"
-        StorageHomeRow = "CrossAgnetCoding data (workspaces, shared prompts, settings)"
+        StorageHomeRow = "CrossAgentCoding data (workspaces, shared prompts, settings)"
         StorageServiceRow = "AgentMemory data (memory store data/ and service log)"
         StorageModelRow = "Model cache (local embedding model all-MiniLM-L6-v2)"
         StorageChooseMigrate = "Choose & migrate…"
@@ -300,8 +300,8 @@ $script:Text = @{
         InstallStatus = "Install Status"
         Installed = "Installed"
         NotInstalled = "Not Installed"
-        Configured = "Connected to CrossAgnetCoding"
-        NotConfigured = "Not Connected to CrossAgnetCoding"
+        Configured = "Connected to CrossAgentCoding"
+        NotConfigured = "Not Connected to CrossAgentCoding"
         UnknownVersion = "Executable, version unknown"
         NotChecked = "Not Checked"
         Scanning = "Scanning…"
@@ -311,7 +311,7 @@ $script:Text = @{
         InstallOrExecutableMissing = "Not installed or not executable"
         ConfigureTool = "Configure"
         ReconfigureTool = "Reconfigure"
-        ToolConfigureDone = "{0} CrossAgnetCoding MCP config written"
+        ToolConfigureDone = "{0} CrossAgentCoding MCP config written"
         AgentInstalledConfigured = "{0} - Installed / Configured"
         AgentInstalledNotConfigured = "{0} - Installed / Not Configured"
         AgentMissingConfigured = "{0} - Not Detected / Configured"
@@ -325,7 +325,7 @@ $script:Text = @{
         BridgeWorkspacePrompt = "Choose the project directory to bridge"
         BridgeWorkspaceDone = "Workspace bridge complete: {0}"
         BridgeWorkspaceTitle = "Bridge Complete"
-        MigrateDataPrompt = "Choose the new CrossAgnetCoding data directory"
+        MigrateDataPrompt = "Choose the new CrossAgentCoding data directory"
         MigrateDataDone = "Data directory migrated: {0}"
         MigrateDataTitle = "Migration Complete"
         Log = "Log"
@@ -370,13 +370,13 @@ $script:Text = @{
         MissingInstallFirst = "Missing: {0}. Please install first."
         ServiceLog = "Service log: {0}"
         SelfTestOk = "SELFTEST OK"
-        InitialLog1 = "CrossAgnetCoding ready"
+        InitialLog1 = "CrossAgentCoding ready"
         InitialLog2 = "Click Install All when dependencies are missing"
         InitialLog3 = "Click Start Service after installation"
     }
     "zh-TW" = @{
-        WindowTitle = "CrossAgnetCoding v0.0.1"
-        Title = "CrossAgnetCoding 跨 Coding Agent 記憶管理器"
+        WindowTitle = "CrossAgentCoding v0.0.1"
+        Title = "CrossAgentCoding 跨 Coding Agent 記憶管理器"
         SettingsTitle = "設定"
         AboutTab = "關於"
         GeneralTab = "一般"
@@ -398,7 +398,7 @@ $script:Text = @{
         MemorySettings = "記憶設定"
         StorageSettings = "儲存設定"
         StorageTitle = "儲存位置設定"
-        StorageHomeRow = "CrossAgnetCoding 資料目錄（工作區、共享 Prompt、設定）"
+        StorageHomeRow = "CrossAgentCoding 資料目錄（工作區、共享 Prompt、設定）"
         StorageServiceRow = "AgentMemory 資料目錄（記憶庫 data/ 與服務日誌）"
         StorageModelRow = "模型快取目錄（本地向量模型 all-MiniLM-L6-v2）"
         StorageChooseMigrate = "選擇並遷移…"
@@ -446,8 +446,8 @@ $script:Text = @{
         InstallStatus = "安裝狀態"
         Installed = "已安裝"
         NotInstalled = "未安裝"
-        Configured = "已連接 CrossAgnetCoding"
-        NotConfigured = "未連接 CrossAgnetCoding"
+        Configured = "已連接 CrossAgentCoding"
+        NotConfigured = "未連接 CrossAgentCoding"
         UnknownVersion = "可執行，版本未知"
         NotChecked = "未檢查"
         Scanning = "掃描中…"
@@ -457,7 +457,7 @@ $script:Text = @{
         InstallOrExecutableMissing = "未安裝或不可執行"
         ConfigureTool = "配置"
         ReconfigureTool = "重新配置"
-        ToolConfigureDone = "{0} 已寫入 CrossAgnetCoding MCP 配置"
+        ToolConfigureDone = "{0} 已寫入 CrossAgentCoding MCP 配置"
         AgentInstalledConfigured = "{0} - 已安裝 / 已配置"
         AgentInstalledNotConfigured = "{0} - 已安裝 / 未配置"
         AgentMissingConfigured = "{0} - 未檢測到安裝 / 已有配置"
@@ -471,7 +471,7 @@ $script:Text = @{
         BridgeWorkspacePrompt = "請選擇要橋接記憶的專案目錄"
         BridgeWorkspaceDone = "工作區橋接完成：{0}"
         BridgeWorkspaceTitle = "橋接完成"
-        MigrateDataPrompt = "請選擇新的 CrossAgnetCoding 資料目錄"
+        MigrateDataPrompt = "請選擇新的 CrossAgentCoding 資料目錄"
         MigrateDataDone = "資料目錄已遷移：{0}"
         MigrateDataTitle = "遷移完成"
         Log = "日誌"
@@ -516,7 +516,7 @@ $script:Text = @{
         MissingInstallFirst = "未安裝：{0}，請先安裝"
         ServiceLog = "服務日誌：{0}"
         SelfTestOk = "SELFTEST OK"
-        InitialLog1 = "CrossAgnetCoding 已就緒"
+        InitialLog1 = "CrossAgentCoding 已就緒"
         InitialLog2 = "未安裝時請點選 [安裝全部]"
         InitialLog3 = "安裝完成後點選 [啟動服務]"
     }
@@ -661,20 +661,23 @@ function Get-NodeVersion {
 }
 
 function Test-ServiceRunning {
-    if ($script:IsWindows) {
-        try {
-            $conn = Get-NetTCPConnection -LocalPort $script:PORT -State Listen -ErrorAction Stop
-            return ($null -ne $conn)
-        } catch {
-            return $false
+    # Fast TCP socket probe (works on all platforms, ~100ms instead of the
+    # 1-5s that Get-NetTCPConnection can take). The previous Get-NetTCPConnection
+    # call blocked the UI thread for seconds at a time inside the 5-second
+    # refresh timer, making the window close button unresponsive.
+    try {
+        $tcpClient = New-Object System.Net.Sockets.TcpClient
+        $asyncResult = $tcpClient.BeginConnect("localhost", $script:PORT, $null, $null)
+        $connected = $asyncResult.AsyncWaitHandle.WaitOne(800)
+        if ($connected -and $tcpClient.Connected) {
+            $tcpClient.EndConnect($asyncResult)
+            $tcpClient.Close()
+            return $true
         }
-    } else {
-        try {
-            $response = Invoke-WebRequest -Uri "http://localhost:$($script:PORT)/api/health" -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
-            return ($response.StatusCode -eq 200)
-        } catch {
-            return $false
-        }
+        $tcpClient.Close()
+        return $false
+    } catch {
+        return $false
     }
 }
 
@@ -1533,20 +1536,20 @@ function Configure-AllAgentClients {
     return @($paths)
 }
 
-function Get-DefaultCrossAgnetCodingHome {
-    return (Join-Path $script:HomeDir ".CrossAgnetCoding")
+function Get-DefaultCrossAgentCodingHome {
+    return (Join-Path $script:HomeDir ".CrossAgentCoding")
 }
 
-function Get-CrossAgnetCodingSettingsPath {
-    if (-not [string]::IsNullOrWhiteSpace($env:CROSSAGNETCODING_SETTINGS)) {
-        return $env:CROSSAGNETCODING_SETTINGS
+function Get-CrossAgentCodingSettingsPath {
+    if (-not [string]::IsNullOrWhiteSpace($env:CrossAgentCoding_SETTINGS)) {
+        return $env:CrossAgentCoding_SETTINGS
     }
 
-    return (Join-Path (Get-DefaultCrossAgnetCodingHome) "settings.json")
+    return (Join-Path (Get-DefaultCrossAgentCodingHome) "settings.json")
 }
 
-function Read-CrossAgnetCodingSettings {
-    $path = Get-CrossAgnetCodingSettingsPath
+function Read-CrossAgentCodingSettings {
+    $path = Get-CrossAgentCodingSettingsPath
     if (Test-Path -LiteralPath $path) {
         try {
             $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
@@ -1560,10 +1563,10 @@ function Read-CrossAgnetCodingSettings {
     return [pscustomobject]@{}
 }
 
-function Write-CrossAgnetCodingSettings {
+function Write-CrossAgentCodingSettings {
     param([object]$Settings)
 
-    $path = Get-CrossAgnetCodingSettingsPath
+    $path = Get-CrossAgentCodingSettingsPath
     $dir = Split-Path -Parent $path
     if (-not (Test-Path -LiteralPath $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -1610,11 +1613,11 @@ function Unprotect-Secret {
 }
 
 function Get-MemorySettings {
-    # Reads the optional "memory" object from CrossAgnetCoding settings.json and
+    # Reads the optional "memory" object from CrossAgentCoding settings.json and
     # fills in safe defaults. Defaults keep AgentMemory zero-config: keyword-only
     # (BM25) search, no LLM provider, the 7-tool core surface.
     # API keys are stored DPAPI-encrypted and decrypted here for in-memory use.
-    $settings = Read-CrossAgnetCodingSettings
+    $settings = Read-CrossAgentCodingSettings
     $memory = $null
     if ($settings.PSObject.Properties.Name -contains "memory") {
         $memory = $settings.memory
@@ -1656,7 +1659,7 @@ function Get-MemorySettings {
 function Save-MemorySettings {
     param([object]$Memory)
 
-    $settings = Read-CrossAgnetCodingSettings
+    $settings = Read-CrossAgentCodingSettings
     $obj = [ordered]@{
         embeddingMode       = [string]$Memory.EmbeddingMode
         embeddingFormat     = [string]$Memory.EmbeddingFormat
@@ -1676,7 +1679,7 @@ function Save-MemorySettings {
         injectContext       = [bool]$Memory.InjectContext
     }
     $settings | Add-Member -NotePropertyName "memory" -NotePropertyValue ([pscustomobject]$obj) -Force
-    return (Write-CrossAgnetCodingSettings -Settings $settings)
+    return (Write-CrossAgentCodingSettings -Settings $settings)
 }
 
 function Get-ProviderKeyEnvName {
@@ -1824,30 +1827,30 @@ function Test-LocalEmbeddingReady {
     return (Test-Path -LiteralPath (Get-XenovaTransformersPath))
 }
 
-function Get-CrossAgnetCodingHome {
-    if (-not [string]::IsNullOrWhiteSpace($env:CROSSAGNETCODING_HOME)) {
-        return [System.IO.Path]::GetFullPath($env:CROSSAGNETCODING_HOME)
+function Get-CrossAgentCodingHome {
+    if (-not [string]::IsNullOrWhiteSpace($env:CrossAgentCoding_HOME)) {
+        return [System.IO.Path]::GetFullPath($env:CrossAgentCoding_HOME)
     }
 
-    $settings = Read-CrossAgnetCodingSettings
+    $settings = Read-CrossAgentCodingSettings
     if ($settings.PSObject.Properties.Name -contains "dataHome" -and -not [string]::IsNullOrWhiteSpace($settings.dataHome)) {
         return [System.IO.Path]::GetFullPath([string]$settings.dataHome)
     }
 
-    return (Get-DefaultCrossAgnetCodingHome)
+    return (Get-DefaultCrossAgentCodingHome)
 }
 
-function Move-CrossAgnetCodingHome {
+function Move-CrossAgentCodingHome {
     param(
         [string]$NewHome,
         [switch]$SwitchOnly
     )
 
     if ([string]::IsNullOrWhiteSpace($NewHome)) {
-        throw "New CrossAgnetCoding data directory is required"
+        throw "New CrossAgentCoding data directory is required"
     }
 
-    $oldHome = Get-CrossAgnetCodingHome
+    $oldHome = Get-CrossAgentCodingHome
     $targetHome = [System.IO.Path]::GetFullPath($NewHome)
     if (-not (Test-Path -LiteralPath $targetHome)) {
         New-Item -ItemType Directory -Path $targetHome -Force | Out-Null
@@ -1870,19 +1873,19 @@ function Move-CrossAgnetCodingHome {
         }
     }
 
-    $settings = Read-CrossAgnetCodingSettings
+    $settings = Read-CrossAgentCodingSettings
     if (-not ($settings.PSObject.Properties.Name -contains "dataHome")) {
         $settings | Add-Member -NotePropertyName "dataHome" -NotePropertyValue $targetHome -Force
     } else {
         $settings.dataHome = $targetHome
     }
     $settings | Add-Member -NotePropertyName "updatedAt" -NotePropertyValue ((Get-Date).ToString("o")) -Force
-    [void](Write-CrossAgnetCodingSettings -Settings $settings)
+    [void](Write-CrossAgentCodingSettings -Settings $settings)
 
     return [pscustomobject]@{
         OldHome = $oldHome
         NewHome = $targetHome
-        SettingsPath = Get-CrossAgnetCodingSettingsPath
+        SettingsPath = Get-CrossAgentCodingSettingsPath
         Migrated = (-not $SwitchOnly)
     }
 }
@@ -1892,7 +1895,7 @@ function Get-StorageSettings {
     # AgentMemory service runs in, so its iii data store (./data/state_store.db
     # and ./data/stream_store) and service log land there. modelCacheDir is where
     # the local embedding model (all-MiniLM-L6-v2) is downloaded.
-    $settings = Read-CrossAgnetCodingSettings
+    $settings = Read-CrossAgentCodingSettings
     $storage = $null
     if ($settings.PSObject.Properties.Name -contains "storage") {
         $storage = $settings.storage
@@ -1920,11 +1923,11 @@ function Set-StorageSetting {
         [string]$Value
     )
 
-    $settings = Read-CrossAgnetCodingSettings
+    $settings = Read-CrossAgentCodingSettings
     $storage = if ($settings.PSObject.Properties.Name -contains "storage") { $settings.storage } else { [pscustomobject]@{} }
     $storage | Add-Member -NotePropertyName $Key -NotePropertyValue $Value -Force
     $settings | Add-Member -NotePropertyName "storage" -NotePropertyValue $storage -Force
-    return (Write-CrossAgnetCodingSettings -Settings $settings)
+    return (Write-CrossAgentCodingSettings -Settings $settings)
 }
 
 function Get-ServiceWorkDir {
@@ -2053,7 +2056,7 @@ function Get-WorkspaceId {
 function Get-WorkspacePath {
     param([string]$ProjectPath)
 
-    return (Join-Path (Join-Path (Get-CrossAgnetCodingHome) "workspaces") (Get-WorkspaceId -ProjectPath $ProjectPath))
+    return (Join-Path (Join-Path (Get-CrossAgentCodingHome) "workspaces") (Get-WorkspaceId -ProjectPath $ProjectPath))
 }
 
 function Get-WorkspacePromptFileNames {
@@ -2148,7 +2151,7 @@ function Add-SessionBridgeEntry {
     Add-Content -LiteralPath $sessionsPath -Value ($entry | ConvertTo-Json -Compress -Depth 8) -Encoding UTF8
 
     $handoff = @"
-# CrossAgnetCoding Workspace Handoff
+# CrossAgentCoding Workspace Handoff
 
 Project: $($workspace.ProjectPath)
 Workspace ID: $($workspace.Id)
@@ -2241,7 +2244,7 @@ function Import-TraeSessionBridge {
 
 function Get-SharedPromptContent {
     return @"
-# CrossAgnetCoding Shared Agent Context
+# CrossAgentCoding Shared Agent Context
 
 Use AgentMemory for durable cross-agent context.
 
@@ -2253,7 +2256,7 @@ Recommended workflow:
 2. During work, store durable decisions, file paths, test commands, and cross-agent handoff notes.
 3. At task end, summarize what changed and write a concise memory entry.
 
-This file is generated by CrossAgnetCoding and inspired by cc-switch style shared agent configuration.
+This file is generated by CrossAgentCoding and inspired by cc-switch style shared agent configuration.
 "@
 }
 
@@ -2268,7 +2271,7 @@ function Get-CcSwitchInspiredFeatures {
 }
 
 function Sync-SharedAgentFiles {
-    $appHome = Get-CrossAgnetCodingHome
+    $appHome = Get-CrossAgentCodingHome
     $sharedDir = Join-Path $appHome "shared"
     if (-not (Test-Path -LiteralPath $sharedDir)) {
         New-Item -ItemType Directory -Path $sharedDir -Force | Out-Null
@@ -2350,14 +2353,14 @@ function Invoke-HiddenProcess {
 }
 
 function Write-CliHelp {
-    Write-Output "CrossAgnetCoding CLI MVP"
+    Write-Output "CrossAgentCoding CLI MVP"
     Write-Output "Commands:"
     Write-Output "  env tools                       Check local tools and service"
     Write-Output "  agents scan                     List agent connection status"
     Write-Output "  agents configure                Auto-configure AgentMemory MCP"
     Write-Output "  workspace init [path]           Initialize workspace memory"
     Write-Output "  workspace bridge [path]         Import Codex/TRAE bridge summaries"
-    Write-Output "  config home                     Show CrossAgnetCoding data directory"
+    Write-Output "  config home                     Show CrossAgentCoding data directory"
     Write-Output "  config migrate <path>           Migrate data directory"
 }
 
@@ -2425,7 +2428,7 @@ function Invoke-CliMode {
         Write-Output "bridge imported: $($workspace.WorkspacePath)"
         return
     } elseif ($command -eq "config home") {
-        Write-Output (Get-CrossAgnetCodingHome)
+        Write-Output (Get-CrossAgentCodingHome)
         return
     } elseif ($command -eq "memory show") {
         $m = Get-MemorySettings
@@ -2464,7 +2467,7 @@ function Invoke-CliMode {
         return
     } elseif ($command -eq "storage show") {
         $s = Get-StorageSettings
-        Write-Output "crossAgnetCodingHome: $(Get-CrossAgnetCodingHome)"
+        Write-Output "CrossAgentCodingHome: $(Get-CrossAgentCodingHome)"
         Write-Output "serviceDir: $($s.ServiceDir)"
         Write-Output "modelCacheDir: $($s.ModelCacheDir)"
         Write-Output "serviceLog: $(Get-ServiceLogPath)"
@@ -2485,7 +2488,7 @@ function Invoke-CliMode {
             $script:CliExitCode = 2
             return
         }
-        $result = Move-CrossAgnetCodingHome -NewHome $CliArgs[2]
+        $result = Move-CrossAgentCodingHome -NewHome $CliArgs[2]
         Write-Output "migrated: $($result.NewHome)"
         return
     }
@@ -2497,7 +2500,7 @@ function Invoke-CliMode {
 function Invoke-TuiMode {
     while ($true) {
         Write-Host ""
-        Write-Host "CrossAgnetCoding TUI MVP"
+        Write-Host "CrossAgentCoding TUI MVP"
         Write-Host "1. env tools"
         Write-Host "2. agents scan"
         Write-Host "3. agents configure"
@@ -2728,7 +2731,7 @@ if ($SelfTest) {
             New-Item -ItemType Directory -Path $gitProject -Force | Out-Null
             & git -C $gitProject init --quiet 2>$null | Out-Null
             $idBeforeRemote = Get-WorkspaceId -ProjectPath $gitProject
-            & git -C $gitProject remote add origin "https://example.com/crossagnetcoding.git" 2>$null | Out-Null
+            & git -C $gitProject remote add origin "https://example.com/CrossAgentCoding.git" 2>$null | Out-Null
             $idAfterRemote = Get-WorkspaceId -ProjectPath $gitProject
             if ($idBeforeRemote -eq $idAfterRemote) {
                 [void]$errors.Add("Workspace ID did not incorporate Git remote")
@@ -2762,16 +2765,16 @@ if ($SelfTest) {
             [void]$errors.Add("Expected bridge entries from manual, Codex, and TRAE imports")
         }
 
-        $oldHome = Get-CrossAgnetCodingHome
+        $oldHome = Get-CrossAgentCodingHome
         $markerPath = Join-Path $oldHome "migration-marker.txt"
         if (-not (Test-Path -LiteralPath $oldHome)) {
             New-Item -ItemType Directory -Path $oldHome -Force | Out-Null
         }
         Set-Content -LiteralPath $markerPath -Value "keep me" -Encoding UTF8
-        $newHome = Join-Path $script:TempDir ("crossagnetcoding-home-" + [guid]::NewGuid().ToString("N"))
-        $migration = Move-CrossAgnetCodingHome -NewHome $newHome
-        if ((Get-CrossAgnetCodingHome) -ne $migration.NewHome) {
-            [void]$errors.Add("CrossAgnetCoding home did not switch after migration")
+        $newHome = Join-Path $script:TempDir ("CrossAgentCoding-home-" + [guid]::NewGuid().ToString("N"))
+        $migration = Move-CrossAgentCodingHome -NewHome $newHome
+        if ((Get-CrossAgentCodingHome) -ne $migration.NewHome) {
+            [void]$errors.Add("CrossAgentCoding home did not switch after migration")
         }
         if (-not (Test-Path -LiteralPath (Join-Path $newHome "migration-marker.txt"))) {
             [void]$errors.Add("Migration did not copy existing data")
@@ -2859,7 +2862,7 @@ function Set-Busy {
 
 function Apply-Language {
     $script:Form.Text = T "WindowTitle"
-    $script:ProductNameLabel.Text = "CrossAgnetCoding"
+    $script:ProductNameLabel.Text = "CrossAgentCoding"
     $script:ProductVersionLabel.Text = "Version $script:APP_VERSION"
     $script:LocalEnvLabel.Text = T "LocalEnvCheck"
     $script:ActionGroup.Text = T "LastAction"
@@ -2889,7 +2892,7 @@ function Update-DataPathLabel {
         return
     }
 
-    $dataHome = Get-CrossAgnetCodingHome
+    $dataHome = Get-CrossAgentCodingHome
     $line1 = T "DataPathInfo" @($dataHome, (Get-ServiceWorkDir))
     $line2 = (T "ModelCacheLabel" @((Get-ModelCacheDir))) + "      " + (T "PortsInfo" @($script:PORT, $script:STREAMS_PORT, $script:VIEWER_PORT))
     $script:DataPathLabel.Text = $line1 + "`r`n" + $line2
@@ -3715,7 +3718,7 @@ function Bridge-WorkspaceFromUi {
     } catch {
         Set-ActionFeedback $_.Exception.Message ([System.Drawing.Color]::Red)
         Write-Log $_.Exception.Message
-        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgnetCoding", "OK", "Error") | Out-Null
+        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgentCoding", "OK", "Error") | Out-Null
     } finally {
         Set-Busy $false
         $dialog.Dispose()
@@ -3726,7 +3729,7 @@ function Migrate-DataHomeFromUi {
     $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
     $dialog.Description = T "MigrateDataPrompt"
     $dialog.ShowNewFolderButton = $true
-    $dialog.SelectedPath = Get-CrossAgnetCodingHome
+    $dialog.SelectedPath = Get-CrossAgentCodingHome
 
     try {
         if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
@@ -3734,7 +3737,7 @@ function Migrate-DataHomeFromUi {
         }
 
         Set-Busy $true
-        $result = Move-CrossAgnetCodingHome -NewHome $dialog.SelectedPath
+        $result = Move-CrossAgentCodingHome -NewHome $dialog.SelectedPath
         Write-Log "Data home: $($result.NewHome)"
         Set-ActionFeedback (T "MigrateDataDone" @($result.NewHome)) ([System.Drawing.Color]::DarkGreen)
         [System.Windows.Forms.MessageBox]::Show((T "MigrateDataDone" @($result.NewHome)), (T "MigrateDataTitle"), "OK", "Information") | Out-Null
@@ -3742,7 +3745,7 @@ function Migrate-DataHomeFromUi {
     } catch {
         Set-ActionFeedback $_.Exception.Message ([System.Drawing.Color]::Red)
         Write-Log $_.Exception.Message
-        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgnetCoding", "OK", "Error") | Out-Null
+        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgentCoding", "OK", "Error") | Out-Null
     } finally {
         Set-Busy $false
         $dialog.Dispose()
@@ -3774,7 +3777,7 @@ function Migrate-StorageLocationFromUi {
     } catch {
         Set-ActionFeedback $_.Exception.Message ([System.Drawing.Color]::Red)
         Write-Log $_.Exception.Message
-        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgnetCoding", "OK", "Error") | Out-Null
+        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgentCoding", "OK", "Error") | Out-Null
         return $false
     } finally {
         Set-Busy $false
@@ -3793,7 +3796,7 @@ function Show-StorageSettingsDialog {
     $dlg.BackColor = [System.Drawing.Color]::White
 
     $rows = @(
-        @{ Name = (T "StorageHomeRow");    Get = { Get-CrossAgnetCodingHome }; Action = "home" },
+        @{ Name = (T "StorageHomeRow");    Get = { Get-CrossAgentCodingHome }; Action = "home" },
         @{ Name = (T "StorageServiceRow"); Get = { Get-ServiceWorkDir };       Action = "service" },
         @{ Name = (T "StorageModelRow");   Get = { Get-ModelCacheDir };        Action = "model" }
     )
@@ -3831,7 +3834,7 @@ function Show-StorageSettingsDialog {
     }
 
     $refresh = {
-        $pathLabels[0].Text = [string](Get-CrossAgnetCodingHome)
+        $pathLabels[0].Text = [string](Get-CrossAgentCodingHome)
         $pathLabels[1].Text = [string](Get-ServiceWorkDir)
         $pathLabels[2].Text = [string](Get-ModelCacheDir)
         Update-DataPathLabel
@@ -3891,7 +3894,7 @@ function Configure-AgentToolFromUi {
     } catch {
         Set-ActionFeedback $_.Exception.Message ([System.Drawing.Color]::Red)
         Write-Log $_.Exception.Message
-        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgnetCoding", "OK", "Error") | Out-Null
+        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "CrossAgentCoding", "OK", "Error") | Out-Null
     } finally {
         Set-Busy $false
     }
@@ -4090,7 +4093,7 @@ $script:Form.Controls.Add($script:HeaderPanel)
 
 # Product name on the left of the header (replaces the removed "设置/关于" labels).
 $script:HeaderTitleLabel = New-Object System.Windows.Forms.Label
-$script:HeaderTitleLabel.Text = "CrossAgnetCoding"
+$script:HeaderTitleLabel.Text = "CrossAgentCoding"
 $script:HeaderTitleLabel.Font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
 $script:HeaderTitleLabel.Size = New-Object System.Drawing.Size(400, 36)
 $script:HeaderTitleLabel.Location = New-Object System.Drawing.Point(24, 12)
@@ -4323,6 +4326,19 @@ $script:InitialScanTimer.Add_Tick({
 })
 $script:Form.Add_Shown({ $script:InitialScanTimer.Start() })
 
+# Stop timers immediately when the user closes the window (X button or
+# taskbar "Close window"). Without this, a timer tick firing during
+# shutdown can block the UI thread and prevent the form from disposing.
+# Local variables are used (not $script:) because PowerShell 5.1 cannot
+# convert script blocks that reference script-scoped variables into
+# FormClosingEventHandler delegates when loaded via -File.
+$localRefreshTimer = $script:RefreshTimer
+$localScanTimer = $script:InitialScanTimer
+$script:Form.Add_FormClosing({
+    if ($localRefreshTimer) { $localRefreshTimer.Stop() }
+    if ($localScanTimer) { $localScanTimer.Stop() }
+})
+
 [void]$script:Form.ShowDialog()
 
 # Clean up timers after the window closes.
@@ -4334,15 +4350,15 @@ if ($script:InitialScanTimer) {
 }
 
 } catch {
-    $logPath = Join-Path ([System.IO.Path]::GetTempPath()) "CrossAgnetCoding-error.log"
-    $detail = "[" + (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + "] CrossAgnetCoding startup failed`r`n" +
+    $logPath = Join-Path ([System.IO.Path]::GetTempPath()) "CrossAgentCoding-error.log"
+    $detail = "[" + (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + "] CrossAgentCoding startup failed`r`n" +
         ($_ | Out-String) + "`r`n" + [string]$_.ScriptStackTrace
     try { Set-Content -LiteralPath $logPath -Value $detail -Encoding UTF8 } catch {}
     try {
         [System.Windows.Forms.MessageBox]::Show(
-            "CrossAgnetCoding 启动失败 / failed to start:`r`n`r`n" + ($_ | Out-String) +
+            "CrossAgentCoding 启动失败 / failed to start:`r`n`r`n" + ($_ | Out-String) +
                 "`r`n日志 / Log: $logPath",
-            "CrossAgnetCoding",
+            "CrossAgentCoding",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
     } catch {}

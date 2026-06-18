@@ -1,4 +1,4 @@
-# CrossAgnetCoding MVP Implementation Plan
+# CrossAgentCoding MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
@@ -68,7 +68,7 @@ Expected: PASS.
 
 - [x] **Step 1: Write failing tests for workspace memory**
 
-Assert same project path returns the same workspace hash, workspace files are created under the CrossAgnetCoding data home, and bridge summaries survive account changes because they do not reference Codex auth state.
+Assert same project path returns the same workspace hash, workspace files are created under the CrossAgentCoding data home, and bridge summaries survive account changes because they do not reference Codex auth state.
 
 - [x] **Step 2: Run self-test and confirm it fails**
 
@@ -102,7 +102,7 @@ Expected: FAIL because migration functions do not exist yet.
 
 - [x] **Step 3: Implement settings and migration**
 
-Add `Get-CrossAgnetCodingSettingsPath`, `Read-CrossAgnetCodingSettings`, `Write-CrossAgnetCodingSettings`, `Get-CrossAgnetCodingHome`, and `Move-CrossAgnetCodingHome`.
+Add `Get-CrossAgentCodingSettingsPath`, `Read-CrossAgentCodingSettings`, `Write-CrossAgentCodingSettings`, `Get-CrossAgentCodingHome`, and `Move-CrossAgentCodingHome`.
 
 - [x] **Step 4: Run self-test and confirm it passes**
 

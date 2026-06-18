@@ -1,6 +1,6 @@
 // macOS path and architecture constants, plus settings/storage resolution.
 // Mirrors the non-Windows branch of AgentMemoryManager.ps1's platform block and
-// Get-CrossAgnetCodingHome / Get-StorageSettings.
+// Get-CrossAgentCodingHome / Get-StorageSettings.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,7 +14,7 @@ export const AM_DIR = path.join(HOME, '.agentmemory');
 export const LOCAL_BIN = path.join(HOME, '.local', 'bin');
 export const NPM_GLOBAL = path.join(HOME, '.npm-global');
 
-export const APP_NAME = 'CrossAgnetCoding';
+export const APP_NAME = 'CrossAgentCoding';
 export const APP_VERSION = '0.0.1';
 export const III_VERSION = 'v0.11.2';
 
@@ -41,12 +41,12 @@ export function iiiUrl() {
 }
 
 export function defaultHome() {
-  return path.join(HOME, '.CrossAgnetCoding');
+  return path.join(HOME, '.CrossAgentCoding');
 }
 
 export function settingsPath() {
-  if (process.env.CROSSAGNETCODING_SETTINGS && process.env.CROSSAGNETCODING_SETTINGS.trim()) {
-    return process.env.CROSSAGNETCODING_SETTINGS;
+  if (process.env.CrossAgentCoding_SETTINGS && process.env.CrossAgentCoding_SETTINGS.trim()) {
+    return process.env.CrossAgentCoding_SETTINGS;
   }
   return path.join(defaultHome(), 'settings.json');
 }
@@ -55,7 +55,7 @@ export function readSettings() {
   return readJson(settingsPath());
 }
 
-// Persist the CrossAgnetCoding settings object (2-space JSON), creating the
+// Persist the CrossAgentCoding settings object (2-space JSON), creating the
 // data home if needed. Returns the settings path.
 export function writeSettings(settings) {
   const p = settingsPath();
@@ -64,10 +64,10 @@ export function writeSettings(settings) {
   return p;
 }
 
-// Resolved CrossAgnetCoding data home: env override > settings.dataHome > default.
-export function crossAgnetCodingHome() {
-  if (process.env.CROSSAGNETCODING_HOME && process.env.CROSSAGNETCODING_HOME.trim()) {
-    return path.resolve(process.env.CROSSAGNETCODING_HOME);
+// Resolved CrossAgentCoding data home: env override > settings.dataHome > default.
+export function CrossAgentCodingHome() {
+  if (process.env.CrossAgentCoding_HOME && process.env.CrossAgentCoding_HOME.trim()) {
+    return path.resolve(process.env.CrossAgentCoding_HOME);
   }
   const s = readSettings();
   if (s && typeof s.dataHome === 'string' && s.dataHome.trim()) {

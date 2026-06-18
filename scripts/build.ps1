@@ -19,7 +19,7 @@ $src = Join-Path $root "src"
 $stage = Join-Path $root "_manager_stage"
 
 if ([string]::IsNullOrWhiteSpace($OutputExe)) {
-    $OutputExe = Join-Path $root "release\CrossAgnetCoding.exe"
+    $OutputExe = Join-Path $root "release\CrossAgentCoding.exe"
 }
 
 # Ensure the output directory exists
@@ -61,7 +61,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-class CrossAgnetCodingLauncher : Form
+class CrossAgentCodingLauncher : Form
 {
     [DllImport("user32.dll")]
     static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -80,13 +80,13 @@ class CrossAgnetCodingLauncher : Form
     private System.Windows.Forms.Timer findWindowTimer;
     private IntPtr psFormHandle = IntPtr.Zero;
 
-    public CrossAgnetCodingLauncher()
+    public CrossAgentCodingLauncher()
     {
         // Form must be visible (not minimized, not hidden) for Shown to fire.
         // We show it normally first, then hide it after Shown fires.
         this.ShowInTaskbar = true;
         this.ShowIcon = true;
-        this.Text = "CrossAgnetCoding";
+        this.Text = "CrossAgentCoding";
         this.WindowState = FormWindowState.Normal;
         this.FormBorderStyle = FormBorderStyle.FixedToolWindow;
         this.Size = new System.Drawing.Size(200, 40);
@@ -175,7 +175,7 @@ class CrossAgnetCodingLauncher : Form
         try
         {
             Assembly asm = Assembly.GetExecutingAssembly();
-            using (Stream stream = asm.GetManifestResourceStream("CrossAgnetCoding.AgentMemoryManager.ps1"))
+            using (Stream stream = asm.GetManifestResourceStream("CrossAgentCoding.AgentMemoryManager.ps1"))
             {
                 if (stream == null)
                 {
@@ -184,7 +184,7 @@ class CrossAgnetCodingLauncher : Form
                     return null;
                 }
 
-                string tempDir = Path.Combine(Path.GetTempPath(), "CrossAgnetCoding");
+                string tempDir = Path.Combine(Path.GetTempPath(), "CrossAgentCoding");
                 Directory.CreateDirectory(tempDir);
                 string scriptPath = Path.Combine(tempDir, "AgentMemoryManager.ps1");
 
@@ -213,7 +213,7 @@ class CrossAgnetCodingLauncher : Form
     {
         try
         {
-            string logPath = Path.Combine(Path.GetTempPath(), "CrossAgnetCoding-launcher.log");
+            string logPath = Path.Combine(Path.GetTempPath(), "CrossAgentCoding-launcher.log");
             File.AppendAllText(logPath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + msg + Environment.NewLine);
         }
         catch { }
@@ -224,7 +224,7 @@ class CrossAgnetCodingLauncher : Form
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
-        var launcher = new CrossAgnetCodingLauncher();
+        var launcher = new CrossAgentCodingLauncher();
         // Start PowerShell BEFORE showing the form, so we don't depend on events
         launcher.LaunchPowerShell();
         Application.Run(launcher);
@@ -242,7 +242,7 @@ $cscArgs = @(
     "/out:$OutputExe",
     "/reference:System.Windows.Forms.dll",
     "/reference:System.Drawing.dll",
-    "/resource:$resourceFile,CrossAgnetCoding.AgentMemoryManager.ps1",
+    "/resource:$resourceFile,CrossAgentCoding.AgentMemoryManager.ps1",
     $launcherCs
 )
 if (Test-Path -LiteralPath $iconPath) {

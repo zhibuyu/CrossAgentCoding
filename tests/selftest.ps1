@@ -69,11 +69,11 @@ foreach ($requiredWorkspaceFeature in @(
 }
 
 foreach ($requiredHomeFeature in @(
-    "function Get-CrossAgnetCodingSettingsPath",
-    "function Read-CrossAgnetCodingSettings",
-    "function Write-CrossAgnetCodingSettings",
-    "function Move-CrossAgnetCodingHome",
-    "CROSSAGNETCODING_HOME",
+    "function Get-CrossAgentCodingSettingsPath",
+    "function Read-CrossAgentCodingSettings",
+    "function Write-CrossAgentCodingSettings",
+    "function Move-CrossAgentCodingHome",
+    "CrossAgentCoding_HOME",
     "dataHome"
 )) {
     if ($source -notmatch [regex]::Escape($requiredHomeFeature)) {
@@ -159,7 +159,7 @@ try {
 $env:CAC_TEST_NO_NODE_EXEC = $oldNoNodeExec
 
 foreach ($required in @(
-    '$script:APP_NAME = "CrossAgnetCoding"',
+    '$script:APP_NAME = "CrossAgentCoding"',
     '$script:APP_VERSION = "0.0.1"',
     "function Get-AgentClientStatuses",
     "function Get-AgentTargetDefinitions",
@@ -179,7 +179,7 @@ foreach ($required in @(
     "function Add-SessionBridgeEntry",
     "function Import-CodexSessionBridge",
     "function Import-TraeSessionBridge",
-    "function Move-CrossAgnetCodingHome",
+    "function Move-CrossAgentCodingHome",
     "function Bridge-WorkspaceFromUi",
     "function Migrate-DataHomeFromUi",
     "function Get-AgentToolCards",
@@ -202,9 +202,9 @@ foreach ($required in @(
 
 $readme = Get-Content -LiteralPath (Join-Path $root "README.md") -Raw -Encoding UTF8
 foreach ($requiredReadme in @(
-    "CrossAgnetCoding",
+    "CrossAgentCoding",
     "version-0.0.1",
-    "CrossAgnetCoding.exe",
+    "CrossAgentCoding.exe",
     "https://github.com/rohitg00/agentmemory",
     "https://github.com/farion1231/cc-switch",
     "Usage"
@@ -215,8 +215,8 @@ foreach ($requiredReadme in @(
 }
 
 $buildScript = Get-Content -LiteralPath (Join-Path $root "scripts\build.ps1") -Raw -Encoding UTF8
-if ($buildScript -notmatch [regex]::Escape("CrossAgnetCoding.exe")) {
-    throw "Build script does not output CrossAgnetCoding.exe"
+if ($buildScript -notmatch [regex]::Escape("CrossAgentCoding.exe")) {
+    throw "Build script does not output CrossAgentCoding.exe"
 }
 
 Write-Host "SOURCE_FEATURES_OK"

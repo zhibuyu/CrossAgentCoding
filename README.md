@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/MCP-compatible-purple" alt="MCP">
 </p>
 
-<h1 align="center">CrossAgnetCoding</h1>
+<h1 align="center">CrossAgentCoding</h1>
 
 <p align="center">
   <b>English</b> | <a href="README.zh-CN.md">简体中文</a> | <a href="README.zh-TW.md">繁體中文</a>
@@ -33,7 +33,7 @@
 
 You use multiple AI coding tools. Each tool has its own isolated memory. Switch tools, switch accounts, or restart &mdash; and all your project goals, decisions, and conventions are gone.
 
-**CrossAgnetCoding fixes this.** It runs a local AgentMemory service (`http://localhost:3111`) and wires it into every coding agent you use via MCP (Model Context Protocol). All agents read and write to the **same persistent memory** &mdash; so context survives tool switches, account changes, and restarts.
+**CrossAgentCoding fixes this.** It runs a local AgentMemory service (`http://localhost:3111`) and wires it into every coding agent you use via MCP (Model Context Protocol). All agents read and write to the **same persistent memory** &mdash; so context survives tool switches, account changes, and restarts.
 
 > Inspired by [rohitg00/agentmemory](https://github.com/rohitg00/agentmemory) (persistent memory) and [farion1231/cc-switch](https://github.com/farion1231/cc-switch/) (multi-agent configuration).
 
@@ -43,7 +43,7 @@ You use multiple AI coding tools. Each tool has its own isolated memory. Switch 
 
 ### Windows (Pre-built EXE)
 
-1. **Download** `CrossAgnetCoding.exe` from [Releases](https://github.com/zhibuyu/CrossAgnetCoding/releases).
+1. **Download** `CrossAgentCoding.exe` from [Releases](https://github.com/zhibuyu/CrossAgentCoding/releases).
 2. Run it. Click **Install All** to set up Node.js, AgentMemory, and iii-engine.
 3. Click **Start Service** &mdash; wait for `Running (localhost:3111)`.
 4. Click **Configure All** to write MCP configs to every detected agent.
@@ -57,8 +57,8 @@ You use multiple AI coding tools. Each tool has its own isolated memory. Switch 
 # Linux: sudo apt install powershell nodejs
 
 # Clone and run
-git clone https://github.com/zhibuyu/CrossAgnetCoding.git
-cd CrossAgnetCoding
+git clone https://github.com/zhibuyu/CrossAgentCoding.git
+cd CrossAgentCoding
 pwsh ./src/AgentMemoryManager.ps1
 
 # Or CLI mode
@@ -142,7 +142,7 @@ Bind a project folder to a stable workspace ID (SHA256 of path + Git remote). Im
 - **MCP tools**: core (7 tools) or all (51 tools)
 
 ### 📦 Storage Migration
-Three independently migratable directories: CrossAgnetCoding data, AgentMemory memory store, and model cache. GUI folder picker or CLI.
+Three independently migratable directories: CrossAgentCoding data, AgentMemory memory store, and model cache. GUI folder picker or CLI.
 
 ### 🖥️ GUI + CLI + TUI
 Full WinForms GUI, PowerShell CLI, and text-based TUI mode.
@@ -169,7 +169,7 @@ Built-in web viewer at `http://localhost:3113` for browsing and managing memorie
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build.ps1
 ```
 
-Uses Windows built-in IExpress. Output: `release\CrossAgnetCoding.exe`
+Uses Windows built-in IExpress. Output: `release\CrossAgentCoding.exe`
 
 ### macOS / Linux
 
@@ -177,12 +177,12 @@ No build step needed &mdash; run directly from source. To create a wrapper scrip
 
 ```bash
 # Create a convenient launcher
-cat > crossagnetcoding << 'EOF'
+cat > crossagentcoding << 'EOF'
 #!/bin/bash
 pwsh "$(dirname "$0")/src/AgentMemoryManager.ps1" "$@"
 EOF
-chmod +x crossagnetcoding
-./crossagnetcoding -Cli env tools
+chmod +x crossagentcoding
+./crossagentcoding -Cli env tools
 ```
 
 ## Test
@@ -197,7 +197,7 @@ Self-test uses a temporary user profile &mdash; your real configs are never touc
 
 ## Security &mdash; Keys Stay Local
 
-API keys you enter in **Memory Settings** are stored **only** in your local `settings.json` (inside your data home, e.g. `%USERPROFILE%\.CrossAgnetCoding` &mdash; outside the repository). On Windows they are **encrypted at rest** (DPAPI, bound to your user account) and decrypted only in memory when the service starts. They are sent **only** to the LLM/embedding endpoint you configure, and are **never** committed to git. (Migrate an old plaintext key with `... -Cli memory encrypt`, or just re-save in Memory Settings.)
+API keys you enter in **Memory Settings** are stored **only** in your local `settings.json` (inside your data home, e.g. `%USERPROFILE%\.CrossAgentCoding` &mdash; outside the repository). On Windows they are **encrypted at rest** (DPAPI, bound to your user account) and decrypted only in memory when the service starts. They are sent **only** to the LLM/embedding endpoint you configure, and are **never** committed to git. (Migrate an old plaintext key with `... -Cli memory encrypt`, or just re-save in Memory Settings.)
 
 Two safeguards keep secrets out of the repo:
 
@@ -217,7 +217,7 @@ A genuine false positive can be bypassed with `git commit --no-verify`.
 ## Project Structure
 
 ```
-CrossAgnetCoding/
+CrossAgentCoding/
 ├── src/
 │   ├── AgentMemoryManager.ps1   # Main program (GUI + all logic)
 │   └── launch.vbs               # Hidden launcher (no cmd window)

@@ -1,4 +1,4 @@
-# CrossAgnetCoding Function Guide
+# CrossAgentCoding Function Guide
 
 This document explains the public behavior and important internal functions so the project can be maintained after release.
 
@@ -59,7 +59,7 @@ Each client has three concepts:
 
 ### cc-switch-inspired Shared Setup
 
-CrossAgnetCoding borrows the practical multi-client setup ideas from `farion1231/cc-switch`:
+CrossAgentCoding borrows the practical multi-client setup ideas from `farion1231/cc-switch`:
 
 - one place to scan Coding Agent clients
 - one-click MCP configuration
@@ -74,7 +74,7 @@ CrossAgnetCoding borrows the practical multi-client setup ideas from `farion1231
 `Sync-SharedAgentFiles` writes shared context files to:
 
 ```text
-%USERPROFILE%\.CrossAgnetCoding\shared
+%USERPROFILE%\.CrossAgentCoding\shared
 ```
 
 Generated files:
@@ -86,7 +86,7 @@ Generated files:
 
 ### Workspace Session Bridge
 
-`Initialize-WorkspaceMemory` creates a project-bound workspace under the CrossAgnetCoding data home. `Import-CodexSessionBridge` and `Import-TraeSessionBridge` import bounded readable snippets into:
+`Initialize-WorkspaceMemory` creates a project-bound workspace under the CrossAgentCoding data home. `Import-CodexSessionBridge` and `Import-TraeSessionBridge` import bounded readable snippets into:
 
 ```text
 workspaces\<workspace-id>\sessions.jsonl
@@ -118,19 +118,19 @@ The script supports:
 
 Returns Node.js, AgentMemory, iii-engine, and service status.
 
-### `Get-CrossAgnetCodingHome`
+### `Get-CrossAgentCodingHome`
 
 Returns:
 
 ```text
-%USERPROFILE%\.CrossAgnetCoding
+%USERPROFILE%\.CrossAgentCoding
 ```
 
-If settings contain `dataHome`, or `CROSSAGNETCODING_HOME` is set, the configured path is returned instead.
+If settings contain `dataHome`, or `CrossAgentCoding_HOME` is set, the configured path is returned instead.
 
-### `Move-CrossAgnetCodingHome`
+### `Move-CrossAgentCodingHome`
 
-Copies the current CrossAgnetCoding data directory to a new path, verifies it is writable, updates `settings.json`, and leaves the old directory in place.
+Copies the current CrossAgentCoding data directory to a new path, verifies it is writable, updates `settings.json`, and leaves the old directory in place.
 
 The GUI `Migrate Data Home` button exposes the same migration behavior with a folder picker.
 
@@ -286,7 +286,7 @@ The packaged exe starts through `wscript.exe launch.vbs`, which runs the script 
 
 - The main window is created and shown first; environment and agent scanning is deferred to a one-shot timer started from the form `Shown` event, so the window always appears before any potentially slow scan runs.
 - Executable detection is bounded by `Get-CommandPathSafe`, so a dead `PATH` entry cannot hang the scan.
-- Any terminating error during GUI bootstrap is written to `%TEMP%\CrossAgnetCoding-error.log` and shown in a message box instead of failing silently.
+- Any terminating error during GUI bootstrap is written to `%TEMP%\CrossAgentCoding-error.log` and shown in a message box instead of failing silently.
 - `launch.vbs` surfaces a message box if PowerShell itself cannot start (for example a blocked execution policy).
 
 Note: an unreachable UNC path placed first in the system `PATH` can stall the PowerShell/.NET process before any application code runs. That is an environment problem outside the app; remove the dead `PATH` entry to resolve it.
